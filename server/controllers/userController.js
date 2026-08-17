@@ -103,6 +103,12 @@ const register = async (req, res, next) => {
         const serviceCenterAddress = req.body.service_center_address || req.body.businessAddress || '';
         const serviceCenterPhone = req.body.service_center_phone_number || req.body.phone || inputPhone;
 
+        const parsedServices = Array.isArray(req.body.servicesOffered)
+          ? req.body.servicesOffered
+          : (typeof req.body.servicesOffered === 'string'
+              ? req.body.servicesOffered.split(',').map(s => s.trim()).filter(Boolean)
+              : [req.body.servicesOffered]);
+
         await ServiceCenter.create({
           user_id: user._id,
           service_center_name: serviceCenterName.trim(),
@@ -111,8 +117,8 @@ const register = async (req, res, next) => {
           city: req.body.city ? req.body.city.trim() : '',
           pincode: req.body.pincode ? req.body.pincode.trim() : '',
           businessRegistrationNumber: req.body.businessRegistrationNumber ? req.body.businessRegistrationNumber.trim() : '',
-          contactPersonName: req.body.contactPersonName ? req.body.contactPersonName.trim() : '',
-          servicesOffered: Array.isArray(req.body.servicesOffered) ? req.body.servicesOffered : [req.body.servicesOffered],
+          contactPersonName: (req.body.contactPersonName || inputName || '').trim(),
+          servicesOffered: parsedServices.length > 0 ? parsedServices : ['General Maintenance'],
           businessDocumentUrl: (req.body.businessDocumentUrl && typeof req.body.businessDocumentUrl === 'string' && req.body.businessDocumentUrl.trim()) || '/uploads/mock_business_license.pdf',
           approvalStatus: 'pending',
           status: 'pending',
@@ -146,9 +152,10 @@ const register = async (req, res, next) => {
       user: formatUserResponse(user)
     });
   } catch (error) {
-    res.status(500).json({
+    console.error('Registration Error:', error);
+    res.status(error.status || 500).json({
       success: false,
-      message: 'Registration failed. Please try again.'
+      message: error.message || 'Registration failed. Please try again.'
     });
   }
 };

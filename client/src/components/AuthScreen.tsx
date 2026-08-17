@@ -8,11 +8,9 @@ import {
   ScrollView,
   ActivityIndicator
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { api } from '../services/api';
-import {
-  validatePassword,
-  getPasswordCriteria
-} from '../utils/validation';
+import { validatePassword, getPasswordCriteria } from '../utils/validation';
 import BackButton from './ui/BackButton';
 import Login from './login';
 import Registration from './registration';
@@ -27,11 +25,10 @@ const THEME = {
   primary: '#0046AD',
   accent: '#F5A524',
   success: '#10B981',
-  error: '#EF4444',
-  buttonBg: '#EEF2F6'
+  error: '#EF4444'
 };
 
-interface AuthScreenProps {
+export interface AuthScreenProps {
   initialScreen?: 'login' | 'signup' | 'forgot_password';
   initialRole?: 'owner' | 'service_center';
   onSuccessAuth: (user: any, token: string) => void;
@@ -47,6 +44,7 @@ export default function AuthScreen({
   onBackToLanding
 }: AuthScreenProps) {
   const [currentScreen, setCurrentScreen] = useState<'login' | 'signup' | 'forgot_password'>(initialScreen);
+  const [selectedRole, setSelectedRole] = useState<'owner' | 'service_center'>(initialRole);
   const [loading, setLoading] = useState(false);
 
   // Forgot Password Flow States
@@ -59,15 +57,15 @@ export default function AuthScreen({
   const [forgotSuccessMsg, setForgotSuccessMsg] = useState('');
   const [devOtpNotice, setDevOtpNotice] = useState('');
   const [showForgotNewPassword, setShowForgotNewPassword] = useState(false);
+  const [showForgotConfirmPassword, setShowForgotConfirmPassword] = useState(false);
 
-  // Forgot Password API Handlers
   const handleRequestOtp = async () => {
     setForgotError('');
     setDevOtpNotice('');
     const trimmedEmail = forgotEmail.trim();
 
     if (!trimmedEmail) {
-      setForgotError('Please enter your email address');
+      setForgotError('Please enter your registered email address');
       return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
@@ -79,7 +77,7 @@ export default function AuthScreen({
       setLoading(true);
       const res = await api.forgotPassword(trimmedEmail);
       if (res.devOtp) {
-        setDevOtpNotice(`[DEV MODE] Verification OTP code: ${res.devOtp}`);
+        setDevOtpNotice(`[DEV MODE] Verification OTP: ${res.devOtp}`);
       }
       setForgotStep('reset');
     } catch (err: any) {
@@ -93,12 +91,8 @@ export default function AuthScreen({
     setForgotError('');
     const trimmedOtp = forgotOtp.trim();
 
-    if (!trimmedOtp) {
-      setForgotError('Verification code is required.');
-      return;
-    }
-    if (trimmedOtp.length !== 6 || isNaN(Number(trimmedOtp))) {
-      setForgotError('Verification code must be 6 digits.');
+    if (!trimmedOtp || trimmedOtp.length !== 6) {
+      setForgotError('Verification code must be exactly 6 digits.');
       return;
     }
     if (!forgotNewPassword) {
@@ -106,7 +100,7 @@ export default function AuthScreen({
       return;
     }
     if (!validatePassword(forgotNewPassword).isValid) {
-      setForgotError('New password does not meet security requirements.');
+      setForgotError('New password does not meet all security criteria.');
       return;
     }
     if (forgotNewPassword !== forgotConfirmPassword) {
@@ -133,48 +127,49 @@ export default function AuthScreen({
   const renderPasswordChecklist = (pwd: string) => {
     const criteria = getPasswordCriteria(pwd);
     const items = [
-      { key: 'minLength', label: 'At least 8 characters long' },
-      { key: 'hasUpper', label: 'One uppercase letter (A-Z)' },
-      { key: 'hasLower', label: 'One lowercase letter (a-z)' },
-      { key: 'hasNumber', label: 'One number (0-9)' },
-      { key: 'hasSpecial', label: 'One special character (!@#$%^&*)' }
+      { key: 'minLength', label: '8+ characters' },
+      { key: 'hasUpper', label: 'Uppercase (A-Z)' },
+      { key: 'hasLower', label: 'Lowercase (a-z)' },
+      { key: 'hasNumber', label: 'Number (0-9)' },
+      { key: 'hasSpecial', label: 'Special symbol' }
     ];
 
     return (
-      <View style={styles.passwordChecklistContainer}>
-        <Text style={styles.passwordChecklistTitle}>Password must contain:</Text>
-        {items.map(item => {
-          const met = (criteria as any)[item.key];
-          return (
-            <View key={item.key} style={styles.passwordChecklistItem}>
-              <Text style={[styles.passwordChecklistIcon, met ? styles.metIcon : styles.unmetIcon]}>
-                {met ? '✓' : '○'}
-              </Text>
-              <Text style={[styles.passwordChecklistText, met ? styles.metText : styles.unmetText]}>
-                {item.label}
-              </Text>
-            </View>
-          );
-        })}
+      <View style={styles.checklistCard}>
+        <Text style={styles.checklistTitle}>Password Strength Checklist:</Text>
+        <View style={styles.checklistGrid}>
+          {items.map(item => {
+            const met = (criteria as any)[item.key];
+            return (
+              <View key={item.key} style={styles.checklistItem}>
+                <Ionicons
+                  name={met ? 'checkmark-circle' : 'ellipse-outline'}
+                  size={13}
+                  color={met ? THEME.success : '#94A3B8'}
+                />
+                <Text style={[styles.checklistText, met && styles.checklistTextMet]}>
+                  {item.label}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
       </View>
     );
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: THEME.background }}>
-      {loading && (
-        <View style={styles.loaderContainer}>
-          <ActivityIndicator size="large" color={THEME.accent} />
-        </View>
-      )}
-
-      {/* STANDALONE LOGIN COMPONENT */}
+    <View style={styles.container}>
+      {/* 1. LOGIN SCREEN */}
       {currentScreen === 'login' && (
         <Login
           onSuccessAuth={onSuccessAuth}
           onPendingApproval={onPendingApproval}
           onBackToLanding={onBackToLanding}
-          onGoToRegister={() => setCurrentScreen('signup')}
+          onGoToRegister={(role) => {
+            if (role) setSelectedRole(role);
+            setCurrentScreen('signup');
+          }}
           onGoToForgotPassword={(userEmail) => {
             if (userEmail) setForgotEmail(userEmail);
             setForgotStep('email');
@@ -188,183 +183,209 @@ export default function AuthScreen({
         />
       )}
 
-      {/* STANDALONE REGISTRATION COMPONENT */}
+      {/* 2. REGISTRATION SCREEN (Supports Owner & Service Center) */}
       {currentScreen === 'signup' && (
         <Registration
-          initialRole={initialRole}
+          initialRole={selectedRole}
           onSuccessAuth={onSuccessAuth}
           onPendingApproval={onPendingApproval}
           onBackToLogin={() => setCurrentScreen('login')}
+          onBackToLanding={onBackToLanding}
         />
       )}
 
-      {/* FORGOT PASSWORD SCREEN */}
+      {/* 3. FORGOT PASSWORD FLOW */}
       {currentScreen === 'forgot_password' && (
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={true} persistentScrollbar={true}>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={true}>
           <View style={styles.authCard}>
-            <View style={{ marginBottom: 16, alignItems: 'flex-start' }}>
-              <BackButton
-                variant="card"
-                label="Back"
-                onPress={() => {
-                  if (forgotStep === 'reset') {
-                    setForgotStep('email');
-                  } else {
-                    setCurrentScreen('login');
-                  }
-                  setForgotError('');
-                }}
-              />
-            </View>
-            <View style={styles.logoContainer}>
-              <View style={styles.logoIcon}>
-                <Text style={styles.logoIconText}>🚗</Text>
+            {loading && (
+              <View style={styles.loaderOverlay}>
+                <ActivityIndicator size="large" color={THEME.primary} />
               </View>
-              <Text style={styles.logoText}>AutoDoc</Text>
+            )}
+
+            {/* Back Button & Header */}
+            <View style={styles.topNavRow}>
+              <BackButton
+                variant="ghost"
+                label="Sign In"
+                onPress={() => setCurrentScreen('login')}
+              />
+              <View style={styles.brandRow}>
+                <View style={styles.brandIconBox}>
+                  <Ionicons name="car-sport" size={16} color="#FFFFFF" />
+                </View>
+                <Text style={styles.brandText}>AutoDoc</Text>
+              </View>
             </View>
 
+            {/* Step: Email Request */}
             {forgotStep === 'email' && (
               <View>
-                <Text style={styles.authTitle}>Reset your password</Text>
-                <Text style={styles.authSubtitle}>
-                  Enter your registered email address below. We'll send you a 6-digit verification code to set a new password.
-                </Text>
+                <View style={styles.headerBox}>
+                  <Text style={styles.title}>Reset Password</Text>
+                  <Text style={styles.subtitle}>
+                    Enter the email associated with your account and we'll send a 6-digit verification code.
+                  </Text>
+                </View>
 
-                {forgotError ? <Text style={styles.errorText}>{forgotError}</Text> : null}
+                {forgotError ? (
+                  <View style={styles.errorBanner}>
+                    <Ionicons name="alert-circle" size={18} color={THEME.error} />
+                    <Text style={styles.errorBannerText}>{forgotError}</Text>
+                  </View>
+                ) : null}
 
-                <Text style={styles.label}>Email Address</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="name@example.com"
-                  placeholderTextColor="#666"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  value={forgotEmail}
-                  onChangeText={(val) => {
-                    setForgotEmail(val);
-                    if (forgotError) setForgotError('');
-                  }}
-                />
-
-                <TouchableOpacity style={styles.primaryButton} onPress={handleRequestOtp}>
-                  <Text style={styles.primaryButtonText}>Send Verification Code →</Text>
-                </TouchableOpacity>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Registered Email</Text>
+                  <View style={styles.inputContainer}>
+                    <Ionicons name="mail-outline" size={18} color="#64748B" style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="name@example.com"
+                      placeholderTextColor="#94A3B8"
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      value={forgotEmail}
+                      onChangeText={setForgotEmail}
+                    />
+                  </View>
+                </View>
 
                 <TouchableOpacity
-                  style={styles.switchAuthContainer}
-                  onPress={() => {
-                    setCurrentScreen('login');
-                    setForgotError('');
-                  }}
+                  style={[styles.primaryButton, loading && styles.buttonDisabled]}
+                  onPress={handleRequestOtp}
+                  disabled={loading}
+                  activeOpacity={0.85}
                 >
-                  <Text style={styles.switchAuthText}>Back to Log In</Text>
+                  <Text style={styles.primaryButtonText}>Send Reset Code</Text>
+                  <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
                 </TouchableOpacity>
               </View>
             )}
 
+            {/* Step: Enter OTP & New Password */}
             {forgotStep === 'reset' && (
               <View>
-                <Text style={styles.authTitle}>Enter Code & Reset Password</Text>
-                <Text style={styles.authSubtitle}>
-                  Verification code sent to <Text style={{ fontWeight: 'bold', color: THEME.text }}>{forgotEmail}</Text>
-                </Text>
+                <View style={styles.headerBox}>
+                  <Text style={styles.title}>Enter Verification Code</Text>
+                  <Text style={styles.subtitle}>
+                    We sent a 6-digit code to <Text style={{ fontWeight: '700', color: '#0F172A' }}>{forgotEmail}</Text>. Enter it below along with your new password.
+                  </Text>
+                </View>
 
                 {devOtpNotice ? (
-                  <View style={styles.devNoticeContainer}>
+                  <View style={styles.devNoticeCard}>
+                    <Ionicons name="code-slash" size={16} color="#B45309" />
                     <Text style={styles.devNoticeText}>{devOtpNotice}</Text>
                   </View>
                 ) : null}
 
-                {forgotError ? <Text style={styles.errorText}>{forgotError}</Text> : null}
+                {forgotError ? (
+                  <View style={styles.errorBanner}>
+                    <Ionicons name="alert-circle" size={18} color={THEME.error} />
+                    <Text style={styles.errorBannerText}>{forgotError}</Text>
+                  </View>
+                ) : null}
 
-                <Text style={styles.label}>6-Digit Verification Code</Text>
-                <TextInput
-                  style={[styles.input, { letterSpacing: 4, fontWeight: 'bold', fontSize: 18, textAlign: 'center' }]}
-                  placeholder="123456"
-                  placeholderTextColor="#999"
-                  keyboardType="number-pad"
-                  maxLength={6}
-                  value={forgotOtp}
-                  onChangeText={(val) => {
-                    setForgotOtp(val);
-                    if (forgotError) setForgotError('');
-                  }}
-                />
-
-                <Text style={styles.label}>New Password</Text>
-                <View style={styles.passwordContainer}>
-                  <TextInput
-                    style={styles.passwordInput}
-                    placeholder="••••••••"
-                    placeholderTextColor="#666"
-                    secureTextEntry={!showForgotNewPassword}
-                    value={forgotNewPassword}
-                    onChangeText={(val) => {
-                      setForgotNewPassword(val);
-                      if (forgotError) setForgotError('');
-                    }}
-                  />
-                  <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowForgotNewPassword(p => !p)}>
-                    <Text style={styles.eyeBtnText}>{showForgotNewPassword ? '🙈' : '👁️'}</Text>
-                  </TouchableOpacity>
+                {/* 6-Digit OTP */}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>6-Digit Verification Code</Text>
+                  <View style={styles.inputContainer}>
+                    <Ionicons name="key-outline" size={18} color="#64748B" style={styles.inputIcon} />
+                    <TextInput
+                      style={[styles.textInput, { letterSpacing: 4, fontWeight: '700' }]}
+                      placeholder="123456"
+                      placeholderTextColor="#94A3B8"
+                      keyboardType="numeric"
+                      maxLength={6}
+                      value={forgotOtp}
+                      onChangeText={setForgotOtp}
+                    />
+                  </View>
                 </View>
+
+                {/* New Password */}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>New Password</Text>
+                  <View style={styles.inputContainer}>
+                    <Ionicons name="lock-closed-outline" size={18} color="#64748B" style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="Min. 8 characters"
+                      placeholderTextColor="#94A3B8"
+                      secureTextEntry={!showForgotNewPassword}
+                      value={forgotNewPassword}
+                      onChangeText={setForgotNewPassword}
+                    />
+                    <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowForgotNewPassword(p => !p)}>
+                      <Ionicons name={showForgotNewPassword ? 'eye-off-outline' : 'eye-outline'} size={18} color="#64748B" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
                 {renderPasswordChecklist(forgotNewPassword)}
 
-                <Text style={styles.label}>Confirm New Password</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="••••••••"
-                  placeholderTextColor="#666"
-                  secureTextEntry={!showForgotNewPassword}
-                  value={forgotConfirmPassword}
-                  onChangeText={(val) => {
-                    setForgotConfirmPassword(val);
-                    if (forgotError) setForgotError('');
-                  }}
-                />
+                {/* Confirm New Password */}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Confirm New Password</Text>
+                  <View style={styles.inputContainer}>
+                    <Ionicons name="shield-checkmark-outline" size={18} color="#64748B" style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="Re-enter new password"
+                      placeholderTextColor="#94A3B8"
+                      secureTextEntry={!showForgotConfirmPassword}
+                      value={forgotConfirmPassword}
+                      onChangeText={setForgotConfirmPassword}
+                    />
+                    <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowForgotConfirmPassword(p => !p)}>
+                      <Ionicons name={showForgotConfirmPassword ? 'eye-off-outline' : 'eye-outline'} size={18} color="#64748B" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
 
-                <TouchableOpacity style={styles.primaryButton} onPress={handleResetPassword}>
-                  <Text style={styles.primaryButtonText}>Reset Password</Text>
+                <TouchableOpacity
+                  style={[styles.primaryButton, loading && styles.buttonDisabled]}
+                  onPress={handleResetPassword}
+                  disabled={loading}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.primaryButtonText}>Update Password</Text>
+                  <Ionicons name="checkmark" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={styles.forgotBtn}
+                  style={styles.resendLink}
                   onPress={handleRequestOtp}
+                  activeOpacity={0.7}
                 >
-                  <Text style={styles.forgotBtnText}>Resend Verification Code</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.switchAuthContainer}
-                  onPress={() => {
-                    setCurrentScreen('login');
-                    setForgotError('');
-                  }}
-                >
-                  <Text style={styles.switchAuthText}>Back to Log In</Text>
+                  <Text style={styles.resendLinkText}>Didn't receive code? Resend OTP</Text>
                 </TouchableOpacity>
               </View>
             )}
 
+            {/* Step: Success */}
             {forgotStep === 'success' && (
-              <View style={styles.forgotSuccessCard}>
-                <Text style={styles.successIcon}>🎉</Text>
-                <Text style={styles.successTitle}>Password Reset Successful!</Text>
+              <View style={styles.successBox}>
+                <View style={styles.successIconCircle}>
+                  <Ionicons name="checkmark-circle" size={48} color={THEME.success} />
+                </View>
+                <Text style={styles.successTitle}>Password Reset Complete!</Text>
                 <Text style={styles.successSubtitle}>
-                  {forgotSuccessMsg || 'Your password has been updated successfully. You can now log in with your new password.'}
+                  {forgotSuccessMsg || 'Your password has been successfully updated. You can now sign in with your new password.'}
                 </Text>
 
                 <TouchableOpacity
-                  style={[styles.primaryButton, { marginTop: 24 }]}
-                  onPress={() => {
-                    setCurrentScreen('login');
-                  }}
+                  style={styles.primaryButton}
+                  onPress={() => setCurrentScreen('login')}
+                  activeOpacity={0.85}
                 >
-                  <Text style={styles.primaryButtonText}>Log In to Your Account →</Text>
+                  <Text style={styles.primaryButtonText}>Proceed to Sign In</Text>
+                  <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
                 </TouchableOpacity>
               </View>
             )}
-
           </View>
         </ScrollView>
       )}
@@ -373,320 +394,231 @@ export default function AuthScreen({
 }
 
 const styles = StyleSheet.create({
-  loaderContainer: {
+  container: {
+    flex: 1,
+    backgroundColor: THEME.background
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+    paddingVertical: 32
+  },
+  authCard: {
+    width: '100%',
+    maxWidth: 440,
+    backgroundColor: THEME.card,
+    borderRadius: 20,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: THEME.border,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 4,
+    marginTop: 10
+  },
+  loaderOverlay: {
     position: 'absolute',
     left: 0,
     right: 0,
     top: 0,
     bottom: 0,
-    backgroundColor: 'rgba(255,255,255,0.7)',
+    backgroundColor: 'rgba(255, 255, 255, 0.75)',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 999
+    zIndex: 99,
+    borderRadius: 20
   },
-  scrollContent: {
-    padding: 16,
-    alignItems: 'center'
-  },
-  authCard: {
-    width: '100%',
-    maxWidth: 400,
-    backgroundColor: THEME.card,
-    borderRadius: 16,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: THEME.border,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 4,
-    marginTop: 40
-  },
-  logoContainer: {
+  topNavRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 24,
-    gap: 10
+    justifyContent: 'space-between',
+    marginBottom: 16
   },
-  logoIcon: {
-    backgroundColor: THEME.buttonBg,
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  logoIconText: {
-    fontSize: 24
-  },
-  logoText: {
-    color: THEME.text,
-    fontSize: 24,
-    fontWeight: 'bold'
-  },
-  landingInfoCard: {
-    backgroundColor: '#EFF6FF',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#BFDBFE'
-  },
-  landingInfoTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#1E40AF',
-    marginBottom: 4
-  },
-  landingInfoText: {
-    fontSize: 12,
-    color: '#1E3A8A',
-    lineHeight: 16
-  },
-  authTitle: {
-    color: THEME.text,
-    fontSize: 22,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 8
-  },
-  authSubtitle: {
-    color: THEME.textSecondary,
-    fontSize: 13,
-    textAlign: 'center',
-    lineHeight: 18,
-    marginBottom: 24
-  },
-  toggleContainer: {
+  brandRow: {
     flexDirection: 'row',
-    backgroundColor: THEME.buttonBg,
+    alignItems: 'center',
+    gap: 8
+  },
+  brandIconBox: {
+    width: 28,
+    height: 28,
     borderRadius: 8,
-    padding: 4,
+    backgroundColor: '#0046AD',
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  brandText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+    letterSpacing: 0.2
+  },
+  headerBox: {
     marginBottom: 20
   },
-  toggleBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    alignItems: 'center',
-    borderRadius: 6
-  },
-  toggleBtnActive: {
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2
-  },
-  toggleBtnText: {
-    color: '#555555',
-    fontSize: 13,
-    fontWeight: '600'
-  },
-  toggleBtnTextActive: {
-    color: '#1E1E1E'
-  },
-  label: {
-    color: THEME.text,
-    fontSize: 13,
-    fontWeight: '600',
-    marginBottom: 8,
-    marginTop: 12
-  },
-  labelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 12,
-    marginBottom: 4
-  },
-  validBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#DCFCE7',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6
-  },
-  validBadgeText: {
-    color: '#15803D',
-    fontSize: 11,
-    fontWeight: 'bold'
-  },
-  input: {
-    width: '100%',
-    height: 48,
-    backgroundColor: '#EEF2F6',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    color: '#1E1E1E',
-    fontSize: 14,
-    borderWidth: 0
-  },
-  inputValid: {
-    borderColor: '#10B981',
-    borderWidth: 1.5,
-    backgroundColor: '#F0FDF4'
-  },
-  inputError: {
-    borderColor: '#EF4444',
-    borderWidth: 1.5
-  },
-  fieldErrorText: {
-    color: '#EF4444',
-    fontSize: 12,
-    marginTop: 4,
-    marginLeft: 2
-  },
-  passwordContainer: {
-    position: 'relative',
-    justifyContent: 'center'
-  },
-  passwordInput: {
-    width: '100%',
-    height: 48,
-    backgroundColor: '#EEF2F6',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingRight: 48,
-    color: '#1E1E1E',
-    fontSize: 14
-  },
-  eyeBtn: {
-    position: 'absolute',
-    right: 12,
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 4
-  },
-  eyeBtnText: {
-    fontSize: 16
-  },
-  forgotBtn: {
-    alignSelf: 'flex-end',
-    marginTop: 8
-  },
-  forgotBtnText: {
-    color: THEME.accent,
-    fontSize: 12,
-    fontWeight: '600'
-  },
-  primaryButton: {
-    width: '100%',
-    height: 48,
-    backgroundColor: THEME.primary,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 24
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: 'bold'
-  },
-  disabledButton: {
-    backgroundColor: '#CBD5E1',
-    opacity: 0.7
-  },
-  disabledButtonText: {
-    color: '#64748B'
-  },
-  switchAuthContainer: {
-    marginTop: 16,
-    alignItems: 'center'
-  },
-  switchAuthText: {
-    color: THEME.primary,
-    fontSize: 13,
-    fontWeight: '600'
-  },
-  errorText: {
-    color: THEME.error,
-    fontSize: 13,
-    fontWeight: '600',
-    textAlign: 'center',
-    marginBottom: 12
-  },
-  passwordChecklistContainer: {
-    backgroundColor: '#F8FAFC',
-    borderRadius: 8,
-    padding: 12,
-    marginTop: 8,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0'
-  },
-  passwordChecklistTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#475569',
+  title: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#0F172A',
     marginBottom: 6
   },
-  passwordChecklistItem: {
+  subtitle: {
+    fontSize: 13,
+    color: '#64748B',
+    lineHeight: 19
+  },
+  errorBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FCA5A5',
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 16,
+    gap: 8
   },
-  passwordChecklistIcon: {
-    fontSize: 12,
-    marginRight: 6,
-    width: 16,
-    textAlign: 'center'
+  errorBannerText: {
+    color: '#B91C1C',
+    fontSize: 13,
+    fontWeight: '600',
+    flex: 1
   },
-  metIcon: {
-    color: '#10B981',
-    fontWeight: 'bold'
-  },
-  unmetIcon: {
-    color: '#94A3B8'
-  },
-  passwordChecklistText: {
-    fontSize: 12
-  },
-  metText: {
-    color: '#10B981',
-    fontWeight: '500'
-  },
-  unmetText: {
-    color: '#64748B'
-  },
-  devNoticeContainer: {
+  devNoticeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     backgroundColor: '#FEF3C7',
     borderWidth: 1,
-    borderColor: '#F59E0B',
-    borderRadius: 8,
-    padding: 12,
+    borderColor: '#FDE68A',
+    borderRadius: 10,
+    padding: 10,
     marginBottom: 16
   },
   devNoticeText: {
     color: '#92400E',
+    fontSize: 12,
+    fontWeight: '700'
+  },
+  inputGroup: {
+    marginBottom: 16
+  },
+  label: {
     fontSize: 13,
-    fontWeight: 'bold',
-    textAlign: 'center'
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 6
   },
-  forgotSuccessCard: {
+  inputContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16
+    backgroundColor: '#EEF2F6',
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 12,
+    height: 48
   },
-  successIcon: {
-    fontSize: 48,
+  inputIcon: {
+    marginRight: 8
+  },
+  textInput: {
+    flex: 1,
+    height: 48,
+    fontSize: 14,
+    color: '#0F172A'
+  },
+  eyeBtn: {
+    padding: 6
+  },
+  checklistCard: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 10,
+    marginBottom: 14
+  },
+  checklistTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#475569',
+    marginBottom: 6
+  },
+  checklistGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8
+  },
+  checklistItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    minWidth: '45%'
+  },
+  checklistText: {
+    fontSize: 11,
+    color: '#64748B'
+  },
+  checklistTextMet: {
+    color: '#15803D',
+    fontWeight: '600'
+  },
+  primaryButton: {
+    flexDirection: 'row',
+    height: 48,
+    backgroundColor: '#0046AD',
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 8,
+    shadowColor: '#0046AD',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 3
+  },
+  buttonDisabled: {
+    opacity: 0.6
+  },
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700'
+  },
+  resendLink: {
+    alignItems: 'center',
+    marginTop: 16,
+    paddingVertical: 4
+  },
+  resendLinkText: {
+    fontSize: 12,
+    color: '#0046AD',
+    fontWeight: '600'
+  },
+  successBox: {
+    alignItems: 'center',
+    paddingVertical: 12
+  },
+  successIconCircle: {
     marginBottom: 16
   },
   successTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '800',
     color: '#0F172A',
-    textAlign: 'center',
-    marginBottom: 8
+    marginBottom: 8,
+    textAlign: 'center'
   },
   successSubtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#64748B',
     textAlign: 'center',
-    lineHeight: 20
+    lineHeight: 20,
+    marginBottom: 20
   }
 });

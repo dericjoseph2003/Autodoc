@@ -20,46 +20,42 @@ import AdminHomeScreen from './admin/AdminHomeScreen';
 import PendingApprovalScreen from '../../screens/PendingApprovalScreen';
 import ProfileEditScreen from '../../screens/ProfileEditScreen';
 import VehicleProfileScreen from './owner/VehicleProfileScreen';
-import VehicleOwnerLandingScreen from './owner/VehicleOwnerLandingScreen';
-import ServiceCenterLandingScreen from './serviceCenter/ServiceCenterLandingScreen';
 import BackButton from '../components/ui/BackButton';
 import AuthScreen from '../components/AuthScreen';
+import WelcomeScreen from '../components/WelcomeScreen';
 
 // Consistent Premium Light-Mode Design System
 const THEME = {
-  background: '#F4F6F9',      // Premium light grey/blue from Autodoc
-  card: '#FFFFFF',            // Pure white card background
-  border: '#E2E8F0',          // Soft light slate border
-  inputBorder: '#E2E8F0',
-  inputBg: '#EEF2F6',         // Muted input background
-  text: '#0F172A',            // Charcoal/Navy text from Autodoc
-  textSecondary: '#64748B',   // Slate grey subtext
-  primary: '#0046AD',         // Deep Royal Blue from Autodoc
-  accent: '#F5A524',          // Amber accent
-  accentLight: '#FEF3C7',
+  background: '#F4F6F9',
+  card: '#FFFFFF',
+  border: '#E2E8F0',
+  text: '#0F172A',
+  textSecondary: '#64748B',
+  primary: '#0046AD',
+  primaryDark: '#003380',
+  accent: '#F5A524',
   success: '#10B981',
-  error: '#EF4444',
-  buttonBg: '#EEF2F6',
-  selectedBg: '#0046AD10'     // Selected background tint
+  error: '#EF4444'
 };
 
 export default function AppIndex() {
   // Global States
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [currentScreen, setCurrentScreen] = useState<'splash' | 'onboarding' | 'owner_landing' | 'service_center_landing' | 'login' | 'signup' | 'forgot_password' | 'dashboard' | 'pending_approval'>('splash');
+  const [currentScreen, setCurrentScreen] = useState<
+    'splash' | 'welcome' | 'role_selection' | 'login' | 'signup' | 'forgot_password' | 'dashboard' | 'pending_approval'
+  >('splash');
   const [authRole, setAuthRole] = useState<'owner' | 'service_center'>('owner');
 
   // Navigation tabs state per role
-  const [activeTab, setActiveTab] = useState<'Home' | 'My Vehicles' | 'Service Centers' | 'Roadside' | 'Profile' | 'ProfileEdit' | 'Appointments' | 'Spare Parts' | 'Roadside Requests' | 'Users' | 'Reports'>('Home');
+  const [activeTab, setActiveTab] = useState<
+    'Home' | 'My Vehicles' | 'Service Centers' | 'Roadside' | 'Profile' | 'ProfileEdit' | 'Appointments' | 'Spare Parts' | 'Roadside Requests' | 'Users' | 'Reports'
+  >('Home');
 
-  // Vehicle Form Inputs (for Owner's "My Vehicles" tab)
-  const [showAddVehicleForm, setShowAddVehicleForm] = useState(false);
-
-  // Lists Data
+  // Vehicle Form & Documents Data
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [documents, setDocuments] = useState<{ [vehicleId: string]: any[] }>({});
-  
+
   // File Upload Reference (for Web)
   const fileInputRef = useRef<any>(null);
   const [uploadingDocVehicleId, setUploadingDocVehicleId] = useState<string | null>(null);
@@ -97,12 +93,14 @@ export default function AppIndex() {
     return subscribeToToken((token) => {
       if (!token) {
         setUser(null);
-        setCurrentScreen(prev => (prev === 'dashboard' || prev === 'pending_approval' || prev === 'splash') ? 'onboarding' : prev);
+        setCurrentScreen(prev =>
+          (prev === 'dashboard' || prev === 'pending_approval' || prev === 'splash') ? 'welcome' : prev
+        );
       }
     });
   }, []);
 
-  // Auto-restore user session on page reload/startup
+  // Auto-restore user session on startup/reload
   useEffect(() => {
     const restoreUserSession = async () => {
       const savedToken = getToken();
@@ -146,13 +144,12 @@ export default function AppIndex() {
         } else {
           setToken(null);
           setUser(null);
-          setCurrentScreen(prev => prev === 'splash' ? 'onboarding' : prev);
+          setCurrentScreen(prev => prev === 'splash' ? 'welcome' : prev);
         }
       } catch (err: any) {
-        console.log('Session auto-restore error or token expired:', err);
         setToken(null);
         setUser(null);
-        setCurrentScreen(prev => prev === 'splash' ? 'onboarding' : prev);
+        setCurrentScreen(prev => prev === 'splash' ? 'welcome' : prev);
       } finally {
         setLoading(false);
       }
@@ -164,7 +161,7 @@ export default function AppIndex() {
   useEffect(() => {
     if (currentScreen === 'splash') {
       const timer = setTimeout(() => {
-        setCurrentScreen(prev => prev === 'splash' ? 'onboarding' : prev);
+        setCurrentScreen(prev => prev === 'splash' ? 'welcome' : prev);
       }, 1500);
       return () => clearTimeout(timer);
     }
@@ -177,7 +174,7 @@ export default function AppIndex() {
       setLoading(true);
       const res = await api.listVehicles();
       setVehicles(res.vehicles || []);
-      
+
       const docMap: { [key: string]: any[] } = {};
       for (const v of res.vehicles || []) {
         const docRes = await api.listDocuments(v._id);
@@ -201,10 +198,8 @@ export default function AppIndex() {
     setToken(null);
     setUser(null);
     setActiveTab('Home');
-    setCurrentScreen('onboarding');
+    setCurrentScreen('welcome');
   };
-
-  // Vehicle Addition handled inside AddVehicleScreen component
 
   const handleDeleteVehicle = async (id: string) => {
     Alert.alert(
@@ -261,7 +256,7 @@ export default function AppIndex() {
       formData.append('file', file);
       formData.append('vehicleId', uploadingDocVehicleId);
       formData.append('documentType', uploadingDocType);
-      
+
       const expiry = new Date();
       expiry.setDate(expiry.getDate() + 365);
       formData.append('expiryDate', expiry.toISOString());
@@ -286,7 +281,7 @@ export default function AppIndex() {
       formData.append('file', mockBlob, `mock_${docType.toLowerCase()}.png`);
       formData.append('vehicleId', vehicleId);
       formData.append('documentType', docType);
-      
+
       const expiry = new Date();
       expiry.setDate(expiry.getDate() + 15);
       formData.append('expiryDate', expiry.toISOString());
@@ -314,11 +309,6 @@ export default function AppIndex() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const getDocStatus = (vehicleId: string, type: string) => {
-    const list = documents[vehicleId] || [];
-    return list.find(d => d.documentType === type);
   };
 
   // Navigations bottom bars per role
@@ -425,7 +415,6 @@ export default function AppIndex() {
   const renderDashboardScreen = () => {
     const role = user?.role;
 
-    // Defensive check route guard
     if (role === 'owner') {
       if (activeTab === 'Home') {
         return <OwnerHomeScreen user={user} onNavigateToTab={(t) => setActiveTab(t as any)} />;
@@ -445,24 +434,35 @@ export default function AppIndex() {
         );
       }
       if (activeTab === 'My Vehicles') {
-        return renderOwnerVehiclesScreen();
+        return (
+          <VehicleProfileScreen
+            vehicles={vehicles}
+            documents={documents}
+            onAddVehicle={() => alertMsg('Add Vehicle', 'Vehicle registration modal')}
+            onDeleteVehicle={handleDeleteVehicle}
+            onUploadDoc={(vehicleId, docType) => triggerDocUpload(vehicleId, docType as any)}
+            onDeleteDoc={handleDeleteDoc}
+            onRefresh={loadVehiclesData}
+            onBack={() => setActiveTab('Home')}
+          />
+        );
       }
       if (activeTab === 'Service Centers') {
         return (
-          <ScrollView contentContainerStyle={styles.paddedContent} showsVerticalScrollIndicator={true} persistentScrollbar={true}>
+          <ScrollView contentContainerStyle={styles.paddedContent} showsVerticalScrollIndicator={true}>
             <BackButton variant="card" label="Back to Home" onPress={() => setActiveTab('Home')} style={{ marginBottom: 12 }} />
             <Text style={styles.viewHeader}>Partners & Service Centers</Text>
-            <Text style={styles.mutedText}>List of verified service centers will appear here.</Text>
+            <Text style={styles.mutedText}>List of verified partner service centers will appear here.</Text>
           </ScrollView>
         );
       }
       if (activeTab === 'Roadside') {
         return (
-          <ScrollView contentContainerStyle={styles.paddedContent} showsVerticalScrollIndicator={true} persistentScrollbar={true}>
+          <ScrollView contentContainerStyle={styles.paddedContent} showsVerticalScrollIndicator={true}>
             <BackButton variant="card" label="Back to Home" onPress={() => setActiveTab('Home')} style={{ marginBottom: 12 }} />
-            <Text style={styles.viewHeader}>Roadside Emergency</Text>
-            <TouchableOpacity style={styles.roadsideBigBtn} onPress={() => alert('🚨 Emergency roadside request dispatched!')}>
-              <Text style={styles.roadsideBigBtnText}>Tap for Roadside Help 🚨</Text>
+            <Text style={styles.viewHeader}>Roadside Emergency Help</Text>
+            <TouchableOpacity style={styles.roadsideBigBtn} onPress={() => alert('🚨 Emergency roadside rescue dispatched!')}>
+              <Text style={styles.roadsideBigBtnText}>Tap for Roadside Assistance 🚨</Text>
             </TouchableOpacity>
           </ScrollView>
         );
@@ -475,28 +475,28 @@ export default function AppIndex() {
       }
       if (activeTab === 'Appointments') {
         return (
-          <ScrollView contentContainerStyle={styles.paddedContent} showsVerticalScrollIndicator={true} persistentScrollbar={true}>
+          <ScrollView contentContainerStyle={styles.paddedContent} showsVerticalScrollIndicator={true}>
             <BackButton variant="card" label="Back to Home" onPress={() => setActiveTab('Home')} style={{ marginBottom: 12 }} />
             <Text style={styles.viewHeader}>Appointments Registry</Text>
-            <Text style={styles.mutedText}>Manage customer service bookings.</Text>
+            <Text style={styles.mutedText}>Manage customer service bookings and schedules.</Text>
           </ScrollView>
         );
       }
       if (activeTab === 'Spare Parts') {
         return (
-          <ScrollView contentContainerStyle={styles.paddedContent} showsVerticalScrollIndicator={true} persistentScrollbar={true}>
+          <ScrollView contentContainerStyle={styles.paddedContent} showsVerticalScrollIndicator={true}>
             <BackButton variant="card" label="Back to Home" onPress={() => setActiveTab('Home')} style={{ marginBottom: 12 }} />
-            <Text style={styles.viewHeader}>Spare Parts Catalog</Text>
-            <Text style={styles.mutedText}>Track inventory levels and pricing.</Text>
+            <Text style={styles.viewHeader}>Spare Parts Inventory</Text>
+            <Text style={styles.mutedText}>Track parts inventory levels and catalog pricing.</Text>
           </ScrollView>
         );
       }
       if (activeTab === 'Roadside Requests') {
         return (
-          <ScrollView contentContainerStyle={styles.paddedContent} showsVerticalScrollIndicator={true} persistentScrollbar={true}>
+          <ScrollView contentContainerStyle={styles.paddedContent} showsVerticalScrollIndicator={true}>
             <BackButton variant="card" label="Back to Home" onPress={() => setActiveTab('Home')} style={{ marginBottom: 12 }} />
             <Text style={styles.viewHeader}>Roadside Breakdowns</Text>
-            <Text style={styles.mutedText}>Assigned active roadside breakdown requests.</Text>
+            <Text style={styles.mutedText}>Active breakdown and towing dispatch requests.</Text>
           </ScrollView>
         );
       }
@@ -508,10 +508,10 @@ export default function AppIndex() {
       }
       if (activeTab === 'Users') {
         return (
-          <ScrollView contentContainerStyle={styles.paddedContent} showsVerticalScrollIndicator={true} persistentScrollbar={true}>
+          <ScrollView contentContainerStyle={styles.paddedContent} showsVerticalScrollIndicator={true}>
             <BackButton variant="card" label="Back to Home" onPress={() => setActiveTab('Home')} style={{ marginBottom: 12 }} />
             <Text style={styles.viewHeader}>Registered Users</Text>
-            <Text style={styles.mutedText}>View and audit registered owners and mechanics.</Text>
+            <Text style={styles.mutedText}>Audit registered drivers and workshop managers.</Text>
           </ScrollView>
         );
       }
@@ -520,16 +520,16 @@ export default function AppIndex() {
       }
       if (activeTab === 'Reports') {
         return (
-          <ScrollView contentContainerStyle={styles.paddedContent} showsVerticalScrollIndicator={true} persistentScrollbar={true}>
+          <ScrollView contentContainerStyle={styles.paddedContent} showsVerticalScrollIndicator={true}>
             <BackButton variant="card" label="Back to Home" onPress={() => setActiveTab('Home')} style={{ marginBottom: 12 }} />
-            <Text style={styles.viewHeader}>System Reports</Text>
-            <Text style={styles.mutedText}>System activity logs, usage stats, and revenue overviews.</Text>
+            <Text style={styles.viewHeader}>System Reports & Metrics</Text>
+            <Text style={styles.mutedText}>Platform analytics, user signups, and service logs.</Text>
           </ScrollView>
         );
       }
     }
 
-    // Common Profile Tab for all roles
+    // Common Profile Tab
     if (activeTab === 'Profile') {
       const getInitials = (name?: string) => {
         if (!name) return 'U';
@@ -543,15 +543,15 @@ export default function AppIndex() {
       const initials = getInitials(user.name);
 
       return (
-        <ScrollView contentContainerStyle={styles.paddedContent} showsVerticalScrollIndicator={true} persistentScrollbar={true}>
+        <ScrollView contentContainerStyle={styles.paddedContent} showsVerticalScrollIndicator={true}>
           {/* Top Header Banner */}
           <View style={styles.profileHeaderBanner}>
             <View style={styles.profileHeaderTextGroup}>
               <Text style={styles.profileHeaderMainTitle}>My Profile</Text>
-              <Text style={styles.profileHeaderSubTitle}>Manage your account and security settings</Text>
+              <Text style={styles.profileHeaderSubTitle}>Manage your account and settings</Text>
             </View>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.avatarCircleContainer}
               activeOpacity={0.8}
               onPress={() => user.role === 'owner' && setActiveTab('ProfileEdit')}
@@ -565,20 +565,18 @@ export default function AppIndex() {
             </TouchableOpacity>
           </View>
 
-          {/* Account Profile Details Card */}
+          {/* Account Profile Card */}
           <View style={styles.profileCard}>
-            {/* Inner Header Row */}
             <View style={styles.profileCardHeaderRow}>
               <View style={styles.profileCardHeaderIconBg}>
                 <Ionicons name="person-outline" size={22} color="#0046AD" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.profileCardTitle}>Account Profile</Text>
-                <Text style={styles.profileCardSubTitle}>Your personal information</Text>
+                <Text style={styles.profileCardTitle}>Account Information</Text>
+                <Text style={styles.profileCardSubTitle}>Your registered AutoDoc credentials</Text>
               </View>
             </View>
 
-            {/* Profile Fields List */}
             <View style={styles.profileRowItem}>
               <View style={styles.profileRowLeft}>
                 <Ionicons name="person-outline" size={18} color="#3B82F6" />
@@ -609,14 +607,15 @@ export default function AppIndex() {
                 <Text style={styles.profileRowLabel}>Role</Text>
               </View>
               <View style={styles.roleBadgePill}>
-                <Text style={styles.roleBadgePillText}>{user.role ? user.role.toUpperCase() : 'USER'}</Text>
+                <Text style={styles.roleBadgePillText}>
+                  {user.role === 'service_center' ? 'SERVICE CENTER' : (user.role || 'USER').toUpperCase()}
+                </Text>
               </View>
             </View>
 
-            {/* Action Buttons */}
             {user.role === 'owner' && (
-              <TouchableOpacity 
-                style={styles.editProfileBtnNew} 
+              <TouchableOpacity
+                style={styles.editProfileBtnNew}
                 activeOpacity={0.7}
                 onPress={() => setActiveTab('ProfileEdit')}
               >
@@ -625,8 +624,8 @@ export default function AppIndex() {
               </TouchableOpacity>
             )}
 
-            <TouchableOpacity 
-              style={styles.logoutBtnNew} 
+            <TouchableOpacity
+              style={styles.logoutBtnNew}
               activeOpacity={0.7}
               onPress={handleLogout}
             >
@@ -638,36 +637,7 @@ export default function AppIndex() {
       );
     }
 
-    if (activeTab === 'ProfileEdit') {
-      return (
-        <ProfileEditScreen
-          user={user}
-          onSave={(updatedUser: any) => {
-            setUser(updatedUser);
-            setActiveTab('Profile');
-          }}
-          onCancel={() => setActiveTab('Profile')}
-        />
-      );
-    }
-
     return null;
-  };
-
-  // Render Vehicles Tab specifically for Owner
-  const renderOwnerVehiclesScreen = () => {
-    return (
-      <VehicleProfileScreen
-        vehicles={vehicles}
-        documents={documents}
-        onAddVehicle={() => setShowAddVehicleForm(true)}
-        onDeleteVehicle={handleDeleteVehicle}
-        onUploadDoc={(vehicleId, docType) => triggerDocUpload(vehicleId, docType as any)}
-        onDeleteDoc={handleDeleteDoc}
-        onRefresh={loadVehiclesData}
-        onBack={() => setActiveTab('Home')}
-      />
-    );
   };
 
   return (
@@ -689,10 +659,13 @@ export default function AppIndex() {
         </View>
       )}
 
-      {/* SPLASH SCREEN */}
+      {/* 1. SPLASH SCREEN */}
       {currentScreen === 'splash' && (
         <View style={styles.splashContainer}>
           <View style={styles.splashContent}>
+            <View style={styles.splashIconBox}>
+              <Ionicons name="car-sport" size={36} color="#FFFFFF" />
+            </View>
             <Text style={styles.splashLogoText}>AutoDoc</Text>
             <Text style={styles.splashTagline}>We've Got Your Back</Text>
             <ActivityIndicator size="small" color="#FFFFFF" style={{ marginTop: 32 }} />
@@ -700,83 +673,97 @@ export default function AppIndex() {
         </View>
       )}
 
-      {/* REDESIGNED LANDING PAGE */}
-      {currentScreen === 'onboarding' && (
+      {/* 2. PROFESSIONAL FIRST WELCOME SCREEN */}
+      {currentScreen === 'welcome' && (
+        <WelcomeScreen
+          onGetStarted={() => setCurrentScreen('role_selection')}
+          onLogin={() => setCurrentScreen('login')}
+        />
+      )}
+
+      {/* 3. ROLE SELECTION & EXPLORATION SCREEN */}
+      {currentScreen === 'role_selection' && (
         <SafeAreaView style={styles.landingContainer}>
           <ScrollView
             contentContainerStyle={styles.landingScrollContent}
             showsVerticalScrollIndicator={false}
           >
-            {/* Dark Blue Header Banner Card */}
-            <View style={styles.heroDarkCard}>
-              <View style={styles.heroTopRow}>
-                <View style={styles.brandBadge}>
-                  <View style={styles.brandIconBox}>
-                    <Ionicons name="car-sport" size={18} color="#FFFFFF" />
-                  </View>
-                  <Text style={styles.brandBadgeText}>AutoDoc</Text>
-                </View>
-                <TouchableOpacity
-                  style={styles.loginPillBtn}
-                  activeOpacity={0.8}
-                  onPress={() => setCurrentScreen('login')}
-                >
-                  <Text style={styles.loginPillText}>Log in</Text>
-                  <Ionicons name="chevron-forward" size={14} color="#FFFFFF" />
-                </TouchableOpacity>
-              </View>
+            {/* Top Navigation Row */}
+            <View style={styles.topNavRowWelcome}>
+              <BackButton
+                variant="ghost"
+                label="Back"
+                onPress={() => setCurrentScreen('welcome')}
+              />
+              <TouchableOpacity
+                style={styles.loginPillBtnSmall}
+                activeOpacity={0.8}
+                onPress={() => setCurrentScreen('login')}
+              >
+                <Text style={styles.loginPillTextSmall}>Sign In</Text>
+                <Ionicons name="chevron-forward" size={13} color="#0046AD" />
+              </TouchableOpacity>
+            </View>
 
-              <Text style={styles.welcomeTag}>WELCOME BACK</Text>
-              <Text style={styles.heroTitle}>One app for every vehicle, every workshop.</Text>
+            {/* Hero Card */}
+            <View style={styles.heroDarkCard}>
+              <Text style={styles.welcomeTag}>SELECT YOUR ACCOUNT TYPE</Text>
+              <Text style={styles.heroTitle}>How will you use AutoDoc?</Text>
               <Text style={styles.heroSubtitle}>
-                Continue as an owner tracking your car, or as a service center running your bays.
+                Choose your profile to proceed with tailored account registration and smart tools.
               </Text>
             </View>
 
-            {/* Role Selection Cards */}
+            {/* Direct Role Registration Cards */}
             <View style={styles.rolesSection}>
-              {/* Option 1: Vehicle Owner */}
+              {/* Option 1: Vehicle Owner -> Directly opens Owner Registration */}
               <TouchableOpacity
                 style={styles.roleCard}
                 activeOpacity={0.85}
-                onPress={() => setCurrentScreen('owner_landing')}
+                onPress={() => {
+                  setAuthRole('owner');
+                  setCurrentScreen('signup');
+                }}
               >
                 <View style={[styles.roleIconBox, { backgroundColor: '#E0F2FE' }]}>
                   <Ionicons name="car-sport" size={24} color="#0284C7" />
                 </View>
                 <View style={styles.roleTextContainer}>
-                  <Text style={styles.roleTitle}>I'm a vehicle owner</Text>
+                  <Text style={styles.roleTitle}>I'm a Vehicle Owner</Text>
                   <Text style={styles.roleSubtitle}>
-                    Book services, track assessments, get roadside help.
+                    Book services, manage digital garage, track repairs, and get roadside help.
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
+                <Ionicons name="chevron-forward" size={20} color="#0046AD" />
               </TouchableOpacity>
 
-              {/* Option 2: Service Center */}
+              {/* Option 2: Service Center -> Directly opens Service Center Registration */}
               <TouchableOpacity
                 style={styles.roleCard}
                 activeOpacity={0.85}
-                onPress={() => setCurrentScreen('service_center_landing')}
+                onPress={() => {
+                  setAuthRole('service_center');
+                  setCurrentScreen('signup');
+                }}
               >
                 <View style={[styles.roleIconBox, { backgroundColor: '#DCFCE7' }]}>
                   <Ionicons name="construct" size={22} color="#16A34A" />
                 </View>
                 <View style={styles.roleTextContainer}>
-                  <Text style={styles.roleTitle}>I run a service center</Text>
+                  <Text style={styles.roleTitle}>I Run a Service Center</Text>
                   <Text style={styles.roleSubtitle}>
-                    Manage bookings, technicians, and workshop operations.
+                    Register your garage, accept online bookings, and manage service bays.
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
+                <Ionicons name="chevron-forward" size={20} color="#16A34A" />
               </TouchableOpacity>
             </View>
 
-            {/* "What you can do" Grid Section */}
+            {/* Features Overview */}
             <View style={styles.featuresSection}>
               <View style={styles.featuresHeader}>
-                <Text style={styles.featuresTitle}>What you can do</Text>
-                <Text style={styles.featuresCountBadge}>6 features</Text>
+                <Text style={styles.featuresTitle}>Platform Capabilities</Text>
+                <Text style={styles.featuresCountBadge}>6 modules</Text>
               </View>
 
               <View style={styles.featuresGrid}>
@@ -789,9 +776,9 @@ export default function AppIndex() {
                   <View style={[styles.featureIconBox, { backgroundColor: '#EEF2FF' }]}>
                     <Ionicons name="clipboard-outline" size={20} color="#4F46E5" />
                   </View>
-                  <Text style={styles.featureCardTitle}>Vehicle assessments</Text>
+                  <Text style={styles.featureCardTitle}>Vehicle Assessments</Text>
                   <Text style={styles.featureCardDesc}>
-                    Digital inspection reports with photos and condition scores.
+                    Digital inspection logs and condition scores.
                   </Text>
                 </TouchableOpacity>
 
@@ -799,14 +786,14 @@ export default function AppIndex() {
                 <TouchableOpacity
                   style={styles.featureGridCard}
                   activeOpacity={0.8}
-                  onPress={() => enterAsGuestOwner('Appointments')}
+                  onPress={() => enterAsGuestOwner('Home')}
                 >
                   <View style={[styles.featureIconBox, { backgroundColor: '#FEF3C7' }]}>
                     <Ionicons name="calendar-outline" size={20} color="#D97706" />
                   </View>
-                  <Text style={styles.featureCardTitle}>Service appointments</Text>
+                  <Text style={styles.featureCardTitle}>Service Bookings</Text>
                   <Text style={styles.featureCardDesc}>
-                    Book, reschedule, and track service slots in real time.
+                    Book, reschedule, and track maintenance.
                   </Text>
                 </TouchableOpacity>
 
@@ -817,11 +804,11 @@ export default function AppIndex() {
                   onPress={() => enterAsGuestOwner('Roadside')}
                 >
                   <View style={[styles.featureIconBox, { backgroundColor: '#DCFCE7' }]}>
-                    <Ionicons name="star-outline" size={20} color="#16A34A" />
+                    <Ionicons name="warning-outline" size={20} color="#16A34A" />
                   </View>
-                  <Text style={styles.featureCardTitle}>Roadside assistance</Text>
+                  <Text style={styles.featureCardTitle}>Roadside Rescue</Text>
                   <Text style={styles.featureCardDesc}>
-                    One-tap help for breakdowns, towing, and emergencies.
+                    One-tap help for breakdowns and towing.
                   </Text>
                 </TouchableOpacity>
 
@@ -834,9 +821,9 @@ export default function AppIndex() {
                   <View style={[styles.featureIconBox, { backgroundColor: '#F3E8FF' }]}>
                     <Ionicons name="briefcase-outline" size={20} color="#9333EA" />
                   </View>
-                  <Text style={styles.featureCardTitle}>Workshop operations</Text>
+                  <Text style={styles.featureCardTitle}>Workshop Operations</Text>
                   <Text style={styles.featureCardDesc}>
-                    Manage bays, technicians, and job queues in one board.
+                    Manage bays, technicians, and queues.
                   </Text>
                 </TouchableOpacity>
 
@@ -849,9 +836,9 @@ export default function AppIndex() {
                   <View style={[styles.featureIconBox, { backgroundColor: '#FEE2E2' }]}>
                     <Ionicons name="receipt-outline" size={20} color="#DC2626" />
                   </View>
-                  <Text style={styles.featureCardTitle}>Maintenance history</Text>
+                  <Text style={styles.featureCardTitle}>Maintenance History</Text>
                   <Text style={styles.featureCardDesc}>
-                    A full timeline of every service, part, and invoice.
+                    Service logs, invoices, and part logs.
                   </Text>
                 </TouchableOpacity>
 
@@ -862,54 +849,20 @@ export default function AppIndex() {
                   onPress={() => enterAsGuestOwner('My Vehicles')}
                 >
                   <View style={[styles.featureIconBox, { backgroundColor: '#E0F2FE' }]}>
-                    <Ionicons name="heart-outline" size={20} color="#0284C7" />
+                    <Ionicons name="folder-outline" size={20} color="#0284C7" />
                   </View>
-                  <Text style={styles.featureCardTitle}>Digital garage</Text>
+                  <Text style={styles.featureCardTitle}>Digital Garage</Text>
                   <Text style={styles.featureCardDesc}>
-                    Store registration, insurance, and warranty documents.
+                    Store RC, insurance, and PUC certificates.
                   </Text>
                 </TouchableOpacity>
               </View>
-            </View>
-
-            {/* Bottom Info Tip Banner */}
-            <View style={styles.bottomInfoBanner}>
-              <Ionicons name="time-outline" size={20} color="#1D4ED8" style={styles.infoBannerIcon} />
-              <Text style={styles.bottomInfoText}>
-                <Text style={styles.bottomInfoBold}>New here?</Text> Pick a path above — owners and service centers each get a dashboard built for how they work.
-              </Text>
             </View>
           </ScrollView>
         </SafeAreaView>
       )}
 
-      {/* DEDICATED VEHICLE OWNER LANDING PAGE */}
-      {currentScreen === 'owner_landing' && (
-        <VehicleOwnerLandingScreen
-          onBack={() => setCurrentScreen('onboarding')}
-          onContinueAsGuest={() => enterAsGuestOwner('Home')}
-          onLogin={() => setCurrentScreen('login')}
-          onRegister={() => {
-            setAuthRole('owner');
-            setCurrentScreen('signup');
-          }}
-        />
-      )}
-
-      {/* DEDICATED SERVICE CENTER LANDING PAGE */}
-      {currentScreen === 'service_center_landing' && (
-        <ServiceCenterLandingScreen
-          onBack={() => setCurrentScreen('onboarding')}
-          onContinueAsGuest={() => enterAsGuestServiceCenter('Home')}
-          onLogin={() => setCurrentScreen('login')}
-          onRegister={() => {
-            setAuthRole('service_center');
-            setCurrentScreen('signup');
-          }}
-        />
-      )}
-
-      {/* STANDALONE AUTH SCREEN (LOGIN / SIGNUP / FORGOT PASSWORD) */}
+      {/* 4. STANDALONE AUTH SCREEN (LOGIN / SIGNUP / FORGOT PASSWORD) */}
       {(currentScreen === 'login' || currentScreen === 'signup' || currentScreen === 'forgot_password') && (
         <AuthScreen
           initialScreen={currentScreen}
@@ -920,24 +873,22 @@ export default function AppIndex() {
             setCurrentScreen('dashboard');
           }}
           onPendingApproval={() => setCurrentScreen('pending_approval')}
-          onBackToLanding={() => setCurrentScreen('onboarding')}
+          onBackToLanding={() => setCurrentScreen('role_selection')}
         />
       )}
 
-      {/* PENDING APPROVAL SCREEN */}
+      {/* 5. PENDING APPROVAL SCREEN */}
       {currentScreen === 'pending_approval' && (
         <PendingApprovalScreen onBackToLogin={() => setCurrentScreen('login')} />
       )}
 
-      {/* DASHBOARDS WRAPPER */}
+      {/* 6. DASHBOARD WRAPPER */}
       {currentScreen === 'dashboard' && user && (
         <View style={styles.dashboardContainer}>
-          {/* Main Active Page View */}
           <View style={styles.pageContent}>
             {renderDashboardScreen()}
           </View>
-          
-          {/* Render Tab Bar based on User Role */}
+
           {user.role === 'owner' && renderOwnerNavigator()}
           {user.role === 'service_center' && renderServiceCenterNavigator()}
           {user.role === 'admin' && renderAdminNavigator()}
@@ -952,10 +903,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: THEME.background
   },
-  scrollContent: {
-    padding: 16,
-    alignItems: 'center'
-  },
   loaderContainer: {
     position: 'absolute',
     left: 0,
@@ -967,150 +914,200 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     zIndex: 999
   },
-  authCard: {
-    width: '100%',
-    maxWidth: 400,
-    backgroundColor: THEME.card,
-    borderRadius: 16,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: THEME.border,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 4,
-    marginTop: 40
-  },
-  logoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 24,
-    gap: 10
-  },
-  logoIcon: {
-    backgroundColor: THEME.buttonBg,
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  logoIconText: {
-    fontSize: 24
-  },
-  logoText: {
-    color: THEME.text,
-    fontSize: 24,
-    fontWeight: 'bold'
-  },
-  authTitle: {
-    color: THEME.text,
-    fontSize: 22,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 8
-  },
-  authSubtitle: {
-    color: THEME.textSecondary,
-    fontSize: 13,
-    textAlign: 'center',
-    lineHeight: 18,
-    marginBottom: 24
-  },
-  toggleContainer: {
-    flexDirection: 'row',
-    backgroundColor: THEME.buttonBg,
-    borderRadius: 8,
-    padding: 4,
-    marginBottom: 20
-  },
-  toggleBtn: {
+  splashContainer: {
     flex: 1,
-    paddingVertical: 10,
-    alignItems: 'center',
-    borderRadius: 6
-  },
-  toggleBtnActive: {
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2
-  },
-  toggleBtnText: {
-    color: '#555555',
-    fontSize: 13,
-    fontWeight: '600'
-  },
-  toggleBtnTextActive: {
-    color: '#1E1E1E'
-  },
-  label: {
-    color: THEME.text,
-    fontSize: 13,
-    fontWeight: '600',
-    marginBottom: 8,
-    marginTop: 12
-  },
-  input: {
-    width: '100%',
-    height: 48,
-    backgroundColor: '#EEF2F6',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    color: '#1E1E1E',
-    fontSize: 14,
-    borderWidth: 0
-  },
-  subLabelText: {
-    color: THEME.textSecondary,
-    fontSize: 11,
-    marginTop: 4,
-    marginLeft: 4
-  },
-  forgotBtn: {
-    alignSelf: 'flex-end',
-    marginTop: 8
-  },
-  forgotBtnText: {
-    color: THEME.accent,
-    fontSize: 12,
-    fontWeight: '600'
-  },
-  primaryButton: {
-    width: '100%',
-    height: 48,
-    backgroundColor: THEME.primary,
-    borderRadius: 8,
+    backgroundColor: '#0046AD',
     justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 24
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: 'bold'
-  },
-  switchAuthContainer: {
-    marginTop: 16,
     alignItems: 'center'
   },
-  switchAuthText: {
-    color: THEME.primary,
-    fontSize: 13,
-    fontWeight: '600'
+  splashContent: {
+    alignItems: 'center'
   },
-  errorText: {
-    color: THEME.error,
-    fontSize: 13,
+  splashIconBox: {
+    width: 68,
+    height: 68,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16
+  },
+  splashLogoText: {
+    fontSize: 42,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: 0.5
+  },
+  splashTagline: {
+    fontSize: 14,
+    color: '#93C5FD',
+    marginTop: 8,
     fontWeight: '600',
-    textAlign: 'center',
+    letterSpacing: 1
+  },
+  landingContainer: {
+    flex: 1,
+    backgroundColor: '#F8FAFC'
+  },
+  landingScrollContent: {
+    padding: 16,
+    paddingBottom: 32,
+    maxWidth: 520,
+    width: '100%',
+    alignSelf: 'center'
+  },
+  topNavRowWelcome: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 12
   },
-  // Dashboard Wrapper Styles
+  loginPillBtnSmall: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    backgroundColor: '#FFFFFF'
+  },
+  loginPillTextSmall: {
+    color: '#0046AD',
+    fontSize: 12,
+    fontWeight: '700'
+  },
+  heroDarkCard: {
+    backgroundColor: '#0F2C59',
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#0F2C59',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 6
+  },
+  welcomeTag: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#93C5FD',
+    letterSpacing: 1,
+    marginBottom: 6
+  },
+  heroTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    lineHeight: 28,
+    marginBottom: 8
+  },
+  heroSubtitle: {
+    fontSize: 13,
+    color: '#CBD5E1',
+    lineHeight: 18
+  },
+  rolesSection: {
+    gap: 12,
+    marginBottom: 20
+  },
+  roleCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2
+  },
+  roleIconBox: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14
+  },
+  roleTextContainer: {
+    flex: 1,
+    marginRight: 8
+  },
+  roleTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 3
+  },
+  roleSubtitle: {
+    fontSize: 12,
+    color: '#64748B',
+    lineHeight: 16
+  },
+  featuresSection: {
+    marginBottom: 16
+  },
+  featuresHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+    paddingHorizontal: 2
+  },
+  featuresTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#0F172A'
+  },
+  featuresCountBadge: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B'
+  },
+  featuresGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10
+  },
+  featureGridCard: {
+    width: '48%',
+    flexGrow: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 2,
+    minHeight: 110
+  },
+  featureIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8
+  },
+  featureCardTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 3
+  },
+  featureCardDesc: {
+    fontSize: 11,
+    color: '#64748B',
+    lineHeight: 15
+  },
   dashboardContainer: {
     flex: 1
   },
@@ -1166,298 +1163,19 @@ const styles = StyleSheet.create({
     color: '#0046AD',
     fontWeight: '700'
   },
-  // Sub-views layouts
   paddedContent: {
     padding: 16,
     backgroundColor: THEME.background
   },
   viewHeader: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '800',
     color: THEME.text,
-    marginBottom: 16
+    marginBottom: 8
   },
   mutedText: {
     fontSize: 13,
     color: THEME.textSecondary
-  },
-  profileCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2
-  },
-  profileLabel: {
-    fontSize: 14,
-    color: '#1A1A1A',
-    fontWeight: '600',
-    marginBottom: 12
-  },
-  profileVal: {
-    fontWeight: '400',
-    color: '#6B7280'
-  },
-  logoutBtn: {
-    backgroundColor: '#FEE2E2',
-    height: 40,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 16
-  },
-  logoutBtnText: {
-    color: '#EF4444',
-    fontSize: 13,
-    fontWeight: 'bold'
-  },
-  editProfileBtn: {
-    backgroundColor: '#EEF2F6',
-    borderColor: '#E2E8F0',
-    borderWidth: 1,
-    height: 40,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 16
-  },
-  editProfileBtnText: {
-    color: '#1A1A1A',
-    fontSize: 13,
-    fontWeight: 'bold'
-  },
-  // Vehicle Tab specific styles
-  actionBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16
-  },
-  addVehBtn: {
-    backgroundColor: THEME.primary,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8
-  },
-  addVehBtnText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: 'bold'
-  },
-  emptyCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 24,
-    alignItems: 'center',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2
-  },
-  emptyCardText: {
-    color: '#1A1A1A',
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: 8
-  },
-  emptyCardSubText: {
-    color: '#6B7280',
-    fontSize: 12,
-    textAlign: 'center'
-  },
-  vehicleCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2
-  },
-  vehHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-    paddingBottom: 12,
-    marginBottom: 12
-  },
-  vehTitle: {
-    color: THEME.text,
-    fontSize: 15,
-    fontWeight: 'bold'
-  },
-  vehSub: {
-    color: THEME.textSecondary,
-    fontSize: 12,
-    marginTop: 2
-  },
-  vehRegNum: {
-    color: THEME.accent,
-    fontSize: 13,
-    fontWeight: 'bold',
-    marginTop: 4
-  },
-  vehDeleteBtn: {
-    padding: 4
-  },
-  vehDeleteIcon: {
-    fontSize: 18
-  },
-  docsSectionTitle: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: THEME.text,
-    marginBottom: 8
-  },
-  docRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#EEF2F6',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8
-  },
-  docInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12
-  },
-  docIcon: {
-    fontSize: 20
-  },
-  docTitle: {
-    color: THEME.text,
-    fontSize: 13,
-    fontWeight: '600'
-  },
-  docStatusText: {
-    fontSize: 11,
-    marginTop: 2
-  },
-  statusUploaded: {
-    color: THEME.success,
-    fontWeight: '600'
-  },
-  statusMissing: {
-    color: THEME.error,
-    fontWeight: '600'
-  },
-  docUploadBtn: {
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: THEME.accent
-  },
-  docUploadText: {
-    color: THEME.accent,
-    fontSize: 11,
-    fontWeight: 'bold'
-  },
-  docDeleteBtn: {
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 6
-  },
-  docActionText: {
-    color: THEME.error,
-    fontSize: 11,
-    fontWeight: '600'
-  },
-  formCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2
-  },
-  formHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    marginBottom: 20
-  },
-  backArrow: {
-    color: THEME.accent,
-    fontSize: 24,
-    fontWeight: 'bold'
-  },
-  formHeaderTitle: {
-    color: THEME.text,
-    fontSize: 16,
-    fontWeight: 'bold'
-  },
-  typeSelectorRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 12
-  },
-  typeSelectorBtn: {
-    minWidth: '30%',
-    backgroundColor: '#EEF2F6',
-    borderRadius: 8,
-    paddingVertical: 10,
-    alignItems: 'center'
-  },
-  typeSelectorBtnActive: {
-    backgroundColor: THEME.selectedBg,
-    borderWidth: 1,
-    borderColor: THEME.accent
-  },
-  typeSelectorLabel: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: THEME.text
-  },
-  sectionHeader: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#1A1A1A',
-    marginTop: 16,
-    marginBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
-    paddingBottom: 4
-  },
-  fuelSelectorRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 16
-  },
-  fuelSelectorBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    backgroundColor: '#FFFFFF',
-    minWidth: '30%',
-    alignItems: 'center'
-  },
-  fuelSelectorBtnActive: {
-    borderColor: THEME.accent,
-    backgroundColor: THEME.selectedBg
-  },
-  fuelSelectorLabel: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#1A1A1A'
   },
   roadsideBigBtn: {
     backgroundColor: '#FEE2E2',
@@ -1467,420 +1185,12 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 40
+    marginTop: 30
   },
   roadsideBigBtnText: {
     color: '#B91C1C',
-    fontSize: 18,
-    fontWeight: 'bold'
-  },
-  workspaceSelectorContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#EEF2F6',
-    borderRadius: 12,
-    padding: 4,
-    width: '100%',
-    maxWidth: 400,
-    marginTop: 20,
-    marginBottom: -20,
-    zIndex: 10
-  },
-  workspaceTab: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: 8,
-    gap: 6
-  },
-  workspaceTabActive: {
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2
-  },
-  workspaceTabIcon: {
-    fontSize: 16
-  },
-  workspaceTabText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#6B7280'
-  },
-  workspaceTabTextActive: {
-    color: '#1A1A1A'
-  },
-  landingInfoCard: {
-    backgroundColor: '#F9FAFC',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#E2E8F0'
-  },
-  landingInfoTitle: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: '#1A1A1A',
-    marginBottom: 6
-  },
-  landingInfoText: {
-    fontSize: 11,
-    color: '#6B7280',
-    lineHeight: 16
-  },
-  // Dev credentials hint card
-  devHintCard: {
-    backgroundColor: '#EFF6FF',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#BFDBFE'
-  },
-  devHintTitle: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#1E40AF',
-    marginBottom: 8
-  },
-  devHintRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    marginBottom: 6,
-    flexWrap: 'wrap'
-  },
-  devHintRole: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: '#1E40AF',
-    minWidth: 55
-  },
-  devHintFill: {
-    fontSize: 10,
-    color: '#1D4ED8',
-    flex: 1,
-    flexWrap: 'wrap'
-  },
-  devHintTap: {
-    fontSize: 10,
-    color: '#93C5FD',
-    fontStyle: 'italic'
-  },
-  // Password field with show/hide toggle
-  passwordContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#EEF2F6',
-    borderRadius: 8,
-    overflow: 'hidden'
-  },
-  passwordInput: {
-    flex: 1,
-    height: 48,
-    paddingHorizontal: 16,
-    color: '#1E1E1E',
-    fontSize: 14
-  },
-  eyeBtn: {
-    paddingHorizontal: 14,
-    height: 48,
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  eyeBtnText: {
-    fontSize: 16
-  },
-  // Splash & Onboarding Styles
-
-  splashContainer: {
-    flex: 1,
-    backgroundColor: '#0046AD',
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  splashContent: {
-    alignItems: 'center'
-  },
-  splashLogoText: {
-    fontSize: 42,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    fontStyle: 'italic',
-    letterSpacing: 1
-  },
-  splashTagline: {
-    fontSize: 15,
-    color: '#93C5FD',
-    marginTop: 10,
-    fontWeight: '500',
-    letterSpacing: 1
-  },
-  onboardingContainer: {
-    flex: 1,
-    backgroundColor: '#F4F6F9',
-    justifyContent: 'space-between'
-  },
-  onboardingHeader: {
-    alignItems: 'center',
-    paddingTop: 20
-  },
-  onboardingBrandText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#0046AD',
-    fontStyle: 'italic'
-  },
-  onboardingContent: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 24
-  },
-  illustrationCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    width: '100%',
-    height: 240,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 32,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3
-  },
-  illustrationWrap: {
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  illustrationBlob: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  illustrationEmoji: {
-    fontSize: 48
-  },
-  illustrationSubEmoji: {
-    fontSize: 24,
-    marginTop: 12
-  },
-  textWrap: {
-    alignItems: 'center',
-    marginBottom: 24
-  },
-  onboardingTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#0F172A',
-    textAlign: 'center',
-    marginBottom: 12
-  },
-  onboardingSubtext: {
-    fontSize: 14,
-    color: '#64748B',
-    textAlign: 'center',
-    lineHeight: 22,
-    paddingHorizontal: 8
-  },
-  dotsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#E2E8F0'
-  },
-  activeDot: {
-    width: 20,
-    backgroundColor: '#0046AD'
-  },
-  onboardingFooter: {
-    paddingHorizontal: 24,
-    paddingBottom: 24
-  },
-  onboardingPrimaryBtn: {
-    backgroundColor: '#0046AD',
-    height: 48,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12
-  },
-  onboardingPrimaryBtnText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: 'bold'
-  },
-  onboardingSkipBtn: {
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  onboardingSkipBtnText: {
-    color: '#64748B',
-    fontSize: 14,
-    fontWeight: 'bold'
-  },
-  inputError: {
-    borderColor: '#EF4444',
-    borderWidth: 1.5
-  },
-  fieldErrorText: {
-    color: '#EF4444',
-    fontSize: 12,
-    marginTop: 4,
-    marginBottom: 8,
-    marginLeft: 2
-  },
-  passwordChecklistContainer: {
-    backgroundColor: '#F8FAFC',
-    borderRadius: 8,
-    padding: 12,
-    marginTop: 8,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0'
-  },
-  passwordChecklistTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#475569',
-    marginBottom: 6
-  },
-  passwordChecklistItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4
-  },
-  passwordChecklistIcon: {
-    fontSize: 12,
-    marginRight: 6,
-    width: 16,
-    textAlign: 'center'
-  },
-  metIcon: {
-    color: '#10B981',
-    fontWeight: 'bold'
-  },
-  unmetIcon: {
-    color: '#94A3B8'
-  },
-  passwordChecklistText: {
-    fontSize: 12
-  },
-  metText: {
-    color: '#10B981',
-    fontWeight: '500'
-  },
-  unmetText: {
-    color: '#64748B'
-  },
-  devNoticeContainer: {
-    backgroundColor: '#FEF3C7',
-    borderWidth: 1,
-    borderColor: '#F59E0B',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16
-  },
-  devNoticeText: {
-    color: '#92400E',
-    fontSize: 13,
-    fontWeight: 'bold',
-    textAlign: 'center'
-  },
-  forgotSuccessCard: {
-    alignItems: 'center',
-    paddingVertical: 16
-  },
-  successIcon: {
-    fontSize: 48,
-    marginBottom: 16
-  },
-  successTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#0F172A',
-    textAlign: 'center',
-    marginBottom: 8
-  },
-  successSubtitle: {
-    fontSize: 14,
-    color: '#64748B',
-    textAlign: 'center',
-    lineHeight: 20
-  },
-  labelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 12,
-    marginBottom: 4
-  },
-  validBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#DCFCE7',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6
-  },
-  validBadgeText: {
-    color: '#15803D',
-    fontSize: 11,
-    fontWeight: 'bold'
-  },
-  inputValid: {
-    borderColor: '#10B981',
-    borderWidth: 1.5,
-    backgroundColor: '#F0FDF4'
-  },
-  disabledButton: {
-    backgroundColor: '#CBD5E1',
-    opacity: 0.7
-  },
-  disabledButtonText: {
-    color: '#64748B'
-  },
-  logoutSectionCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#FEE2E2',
-    shadowColor: '#EF4444',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-    marginTop: 8
-  },
-  logoutSectionTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#0F172A',
-    marginBottom: 4
-  },
-  logoutSectionSubtext: {
-    fontSize: 12,
-    color: '#64748B',
-    lineHeight: 18,
-    marginBottom: 16
+    fontSize: 17,
+    fontWeight: '800'
   },
   profileHeaderBanner: {
     flexDirection: 'row',
@@ -1932,6 +1242,18 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#FFFFFF'
   },
+  profileCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2
+  },
   profileCardHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1942,15 +1264,15 @@ const styles = StyleSheet.create({
     borderBottomColor: '#F1F5F9'
   },
   profileCardHeaderIconBg: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#EFF6FF',
     justifyContent: 'center',
     alignItems: 'center'
   },
   profileCardTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
     color: '#0F172A'
   },
@@ -2026,214 +1348,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#DC2626'
-  },
-  // Redesigned Landing Page Styles
-  landingContainer: {
-    flex: 1,
-    backgroundColor: '#F4F7FC'
-  },
-  landingScrollContent: {
-    padding: 16,
-    paddingBottom: 32,
-    maxWidth: 520,
-    width: '100%',
-    alignSelf: 'center'
-  },
-  heroDarkCard: {
-    backgroundColor: '#0F2C59',
-    borderRadius: 24,
-    padding: 24,
-    marginBottom: 16,
-    shadowColor: '#0F2C59',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 8
-  },
-  heroTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24
-  },
-  brandBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10
-  },
-  brandIconBox: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  brandBadgeText: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 0.3
-  },
-  loginPillBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)'
-  },
-  loginPillText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '700'
-  },
-  welcomeTag: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#93C5FD',
-    letterSpacing: 1.2,
-    marginBottom: 8
-  },
-  heroTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    lineHeight: 32,
-    marginBottom: 10
-  },
-  heroSubtitle: {
-    fontSize: 13,
-    color: '#CBD5E1',
-    lineHeight: 19
-  },
-  rolesSection: {
-    gap: 12,
-    marginBottom: 24
-  },
-  roleCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2
-  },
-  roleIconBox: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 14
-  },
-  roleTextContainer: {
-    flex: 1,
-    marginRight: 8
-  },
-  roleTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: 3
-  },
-  roleSubtitle: {
-    fontSize: 12,
-    color: '#64748B',
-    lineHeight: 16
-  },
-  featuresSection: {
-    marginBottom: 16
-  },
-  featuresHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 14,
-    paddingHorizontal: 2
-  },
-  featuresTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#0F172A'
-  },
-  featuresCountBadge: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#64748B'
-  },
-  featuresGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12
-  },
-  featureGridCard: {
-    width: '48%',
-    flexGrow: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
-    elevation: 2,
-    minHeight: 140
-  },
-  featureIconBox: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12
-  },
-  featureCardTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: 4,
-    lineHeight: 18
-  },
-  featureCardDesc: {
-    fontSize: 11,
-    color: '#64748B',
-    lineHeight: 15
-  },
-  bottomInfoBanner: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: '#EFF6FF',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#DBEAFE',
-    marginTop: 8
-  },
-  infoBannerIcon: {
-    marginRight: 10,
-    marginTop: 1
-  },
-  bottomInfoText: {
-    flex: 1,
-    fontSize: 12,
-    color: '#1E40AF',
-    lineHeight: 18
-  },
-  bottomInfoBold: {
-    fontWeight: '800',
-    color: '#1E3A8A'
   }
 });
-

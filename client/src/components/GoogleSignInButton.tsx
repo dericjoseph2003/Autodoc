@@ -27,7 +27,7 @@ export default function GoogleSignInButton({
   onSuccess,
   onError,
   disabled = false,
-  label = 'Sign in with Google'
+  label = 'Continue with Google'
 }: GoogleSignInButtonProps) {
   const [loading, setLoading] = useState(false);
 
@@ -87,9 +87,7 @@ export default function GoogleSignInButton({
         <ActivityIndicator size="small" color="#4285F4" />
       ) : (
         <View style={styles.contentRow}>
-          <View style={styles.iconCircle}>
-            <Ionicons name="logo-google" size={18} color="#4285F4" />
-          </View>
+          <Ionicons name="logo-google" size={17} color="#4285F4" />
           <Text style={styles.buttonText}>{label}</Text>
         </View>
       )}
@@ -100,20 +98,14 @@ export default function GoogleSignInButton({
 const styles = StyleSheet.create({
   googleButton: {
     width: '100%',
-    height: 48,
+    height: 46,
     backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 16,
-    marginVertical: 10,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 2,
     cursor: Platform.OS === 'web' ? 'pointer' : 'auto'
   },
   disabledBtn: {
@@ -125,18 +117,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 10
   },
-  iconCircle: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: '#EEF2F6',
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
   buttonText: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#0F172A',
-    letterSpacing: -0.2
+    letterSpacing: -0.1
   }
 });
