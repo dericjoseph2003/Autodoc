@@ -48,7 +48,7 @@ export default function AuthScreen({
   const [loading, setLoading] = useState(false);
 
   // Forgot Password Flow States
-  const [forgotStep, setForgotStep] = useState<'email' | 'reset' | 'success'>('email');
+  const [forgotStep, setForgotStep] = useState<'email' | 'verify_otp' | 'new_password' | 'success'>('email');
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotOtp, setForgotOtp] = useState('');
   const [forgotNewPassword, setForgotNewPassword] = useState('');
@@ -79,9 +79,32 @@ export default function AuthScreen({
       if (res.devOtp) {
         setDevOtpNotice(`[DEV MODE] Verification OTP: ${res.devOtp}`);
       }
-      setForgotStep('reset');
+      setForgotStep('verify_otp');
     } catch (err: any) {
       setForgotError(err.message || 'Failed to send reset code. Please check your email.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    setForgotError('');
+    const trimmedOtp = forgotOtp.trim();
+
+    if (!trimmedOtp || trimmedOtp.length !== 6) {
+      setForgotError('Verification code must be exactly 6 digits.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await api.verifyOtp({
+        email: forgotEmail.trim(),
+        otp: trimmedOtp
+      });
+      setForgotStep('new_password');
+    } catch (err: any) {
+      setForgotError(err.message || 'Invalid verification code. Please check your email inbox.');
     } finally {
       setLoading(false);
     }
@@ -91,10 +114,6 @@ export default function AuthScreen({
     setForgotError('');
     const trimmedOtp = forgotOtp.trim();
 
-    if (!trimmedOtp || trimmedOtp.length !== 6) {
-      setForgotError('Verification code must be exactly 6 digits.');
-      return;
-    }
     if (!forgotNewPassword) {
       setForgotError('New password is required.');
       return;
@@ -264,13 +283,13 @@ export default function AuthScreen({
               </View>
             )}
 
-            {/* Step: Enter OTP & New Password */}
-            {forgotStep === 'reset' && (
+            {/* Step 2: Enter Verification Code */}
+            {forgotStep === 'verify_otp' && (
               <View>
                 <View style={styles.headerBox}>
-                  <Text style={styles.title}>Enter Verification Code</Text>
+                  <Text style={styles.title}>Check Your Email Inbox</Text>
                   <Text style={styles.subtitle}>
-                    We sent a 6-digit code to <Text style={{ fontWeight: '700', color: '#0F172A' }}>{forgotEmail}</Text>. Enter it below along with your new password.
+                    We sent a 6-digit verification code to <Text style={{ fontWeight: '700', color: '#0F172A' }}>{forgotEmail}</Text>. Enter the code below to activate password resetting options.
                   </Text>
                 </View>
 
@@ -294,7 +313,7 @@ export default function AuthScreen({
                   <View style={styles.inputContainer}>
                     <Ionicons name="key-outline" size={18} color="#64748B" style={styles.inputIcon} />
                     <TextInput
-                      style={[styles.textInput, { letterSpacing: 4, fontWeight: '700' }]}
+                      style={[styles.textInput, { letterSpacing: 6, fontWeight: '800', fontSize: 18 }]}
                       placeholder="123456"
                       placeholderTextColor="#94A3B8"
                       keyboardType="numeric"
@@ -304,6 +323,43 @@ export default function AuthScreen({
                     />
                   </View>
                 </View>
+
+                <TouchableOpacity
+                  style={[styles.primaryButton, loading && styles.buttonDisabled]}
+                  onPress={handleVerifyOtp}
+                  disabled={loading}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.primaryButtonText}>Verify Code & Continue</Text>
+                  <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.resendLink}
+                  onPress={handleRequestOtp}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.resendLinkText}>Didn't receive code? Resend OTP</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Step 3: Enter New Password (Activated after OTP verification) */}
+            {forgotStep === 'new_password' && (
+              <View>
+                <View style={styles.headerBox}>
+                  <Text style={styles.title}>Set New Password</Text>
+                  <Text style={styles.subtitle}>
+                    Email code verified successfully for <Text style={{ fontWeight: '700', color: '#0F172A' }}>{forgotEmail}</Text>. Enter your new password below.
+                  </Text>
+                </View>
+
+                {forgotError ? (
+                  <View style={styles.errorBanner}>
+                    <Ionicons name="alert-circle" size={18} color={THEME.error} />
+                    <Text style={styles.errorBannerText}>{forgotError}</Text>
+                  </View>
+                ) : null}
 
                 {/* New Password */}
                 <View style={styles.inputGroup}>
@@ -351,16 +407,8 @@ export default function AuthScreen({
                   disabled={loading}
                   activeOpacity={0.85}
                 >
-                  <Text style={styles.primaryButtonText}>Update Password</Text>
-                  <Ionicons name="checkmark" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.resendLink}
-                  onPress={handleRequestOtp}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.resendLinkText}>Didn't receive code? Resend OTP</Text>
+                  <Text style={styles.primaryButtonText}>Update Password & Sign In</Text>
+                  <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
                 </TouchableOpacity>
               </View>
             )}

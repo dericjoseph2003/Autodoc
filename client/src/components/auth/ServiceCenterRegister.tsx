@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
   View,
@@ -18,6 +18,159 @@ import {
   validatePhone,
   getPasswordCriteria
 } from '../../utils/validation';
+
+let WebView: any = null;
+if (Platform.OS !== 'web') {
+  try {
+    WebView = require('react-native-webview').WebView;
+  } catch (e) {}
+}
+
+const DEFAULT_LAT = 19.076;
+const DEFAULT_LNG = 72.8777;
+
+function buildLeafletHTML(initialLat: number, initialLng: number) {
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body, #map { height: 100%; width: 100%; }
+    .custom-pin { background: transparent; border: none; }
+    .attribution-hint {
+      position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%);
+      background: rgba(255,255,255,0.92); border-radius: 20px; padding: 4px 14px;
+      font-size: 11px; font-family: system-ui, -apple-system, sans-serif; color: #0F172A; font-weight: 600;
+      pointer-events: none; z-index: 1000; white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div class="attribution-hint" id="hint">Tap or drag pin to select location</div>
+  <script>
+    var map = L.map('map', { zoomControl: true, attributionControl: false }).setView([${initialLat}, ${initialLng}], 15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+    var pinIcon = L.divIcon({
+      className: 'custom-pin',
+      html: '<div style="font-size:32px;transform:translateY(-50%);filter:drop-shadow(0 3px 6px rgba(0,0,0,0.35))">📍</div>',
+      iconAnchor: [16, 40],
+      iconSize: [32, 40]
+    });
+    var marker = L.marker([${initialLat}, ${initialLng}], { icon: pinIcon, draggable: true }).addTo(map);
+    function sendLocation(lat, lng) {
+      var data = JSON.stringify({ lat: lat, lng: lng });
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(data);
+      } else if (window.parent !== window) {
+        window.parent.postMessage({ type: 'MAP_PIN', lat: lat, lng: lng }, '*');
+      }
+      document.getElementById('hint').textContent = 'Location pinned ✓';
+    }
+    marker.on('dragend', function(e) {
+      var pos = e.target.getLatLng();
+      sendLocation(pos.lat, pos.lng);
+    });
+    map.on('click', function(e) {
+      marker.setLatLng(e.latlng);
+      map.setView(e.latlng, map.getZoom());
+      sendLocation(e.latlng.lat, e.latlng.lng);
+    });
+    sendLocation(${initialLat}, ${initialLng});
+  </script>
+</body>
+</html>`;
+}
+
+function WebIframeMap({ initialLat, initialLng, onLocationSelect }: { initialLat: number; initialLng: number; onLocationSelect: (lat: number, lng: number) => void }) {
+  const iframeRef = useRef<any>(null);
+  const [mapReady, setMapReady] = useState(false);
+
+  useEffect(() => {
+    const handler = (event: any) => {
+      if (event.data && event.data.type === 'MAP_PIN') {
+        onLocationSelect(event.data.lat, event.data.lng);
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [onLocationSelect]);
+
+  const html = buildLeafletHTML(initialLat, initialLng);
+  const blob = new Blob([html], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+
+  return (
+    <View style={styles.mapWrapper}>
+      {!mapReady && (
+        <View style={styles.mapLoading}>
+          <ActivityIndicator color="#16A34A" size="small" />
+          <Text style={styles.mapLoadingText}>Loading OpenStreetMap...</Text>
+        </View>
+      )}
+      <iframe
+        ref={iframeRef}
+        src={url}
+        style={{
+          width: '100%',
+          height: '100%',
+          border: 'none',
+          borderRadius: 10,
+          display: mapReady ? 'block' : 'none'
+        }}
+        onLoad={() => setMapReady(true)}
+        title="OpenStreetMap Location Picker"
+      />
+    </View>
+  );
+}
+
+function NativeWebViewMap({ initialLat, initialLng, onLocationSelect }: { initialLat: number; initialLng: number; onLocationSelect: (lat: number, lng: number) => void }) {
+  const [mapReady, setMapReady] = useState(false);
+  const html = buildLeafletHTML(initialLat, initialLng);
+
+  const handleMessage = useCallback((event: any) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      if (data.lat !== undefined && data.lng !== undefined) {
+        onLocationSelect(data.lat, data.lng);
+      }
+    } catch (_) {}
+  }, [onLocationSelect]);
+
+  if (!WebView) {
+    return (
+      <View style={[styles.mapWrapper, styles.mapFallback]}>
+        <Text style={styles.mapFallbackText}>📍 OpenStreetMap unavailable — enter address manually</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.mapWrapper}>
+      {!mapReady && (
+        <View style={styles.mapLoading}>
+          <ActivityIndicator color="#16A34A" size="small" />
+          <Text style={styles.mapLoadingText}>Loading OpenStreetMap...</Text>
+        </View>
+      )}
+      <WebView
+        originWhitelist={['*']}
+        source={{ html }}
+        onMessage={handleMessage}
+        onLoad={() => setMapReady(true)}
+        style={mapReady ? styles.webView : styles.webViewHidden}
+        javaScriptEnabled
+        domStorageEnabled
+        mixedContentMode="compatibility"
+      />
+    </View>
+  );
+}
 
 const THEME = {
   background: '#F8FAFC',
@@ -97,6 +250,13 @@ export default function ServiceCenterRegister({
   const [registrationNumber, setRegistrationNumber] = useState('');
   const [uploadedDocName, setUploadedDocName] = useState<string | null>(null);
 
+  // Location & OpenStreetMap State
+  const [latitude, setLatitude] = useState(DEFAULT_LAT);
+  const [longitude, setLongitude] = useState(DEFAULT_LNG);
+  const [fetchingAddress, setFetchingAddress] = useState(false);
+  const [gettingGps, setGettingGps] = useState(false);
+  const [fetchedAddress, setFetchedAddress] = useState('');
+
   // Focus & State
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -105,18 +265,101 @@ export default function ServiceCenterRegister({
 
   const fileInputRef = useRef<any>(null);
 
+  // Reverse Geocoding with OpenStreetMap Nominatim
+  const fetchLocationAddress = useCallback(async (lat: number, lng: number) => {
+    try {
+      setFetchingAddress(true);
+      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`, {
+        headers: {
+          'Accept-Language': 'en-US,en;q=0.9'
+        }
+      });
+      const data = await response.json();
+      if (data && data.display_name) {
+        const fullAddr = data.display_name;
+        setFetchedAddress(fullAddr);
+
+        const addrObj = data.address || {};
+        const detectedCity = addrObj.city || addrObj.town || addrObj.village || addrObj.suburb || addrObj.county || '';
+        const detectedPincode = addrObj.postcode || '';
+
+        const streetParts = [
+          addrObj.building,
+          addrObj.house_number,
+          addrObj.road,
+          addrObj.suburb || addrObj.neighbourhood || addrObj.residential,
+          addrObj.city_district || addrObj.subdistrict
+        ].filter(Boolean);
+
+        const formattedGeoAddress = streetParts.length > 0 ? streetParts.join(', ') : fullAddr;
+
+        setBusinessAddress(formattedGeoAddress);
+
+        if (detectedCity) {
+          setCity(detectedCity);
+        }
+        if (detectedPincode) {
+          const cleanPin = detectedPincode.replace(/\D/g, '').slice(0, 6);
+          if (cleanPin.length === 6) {
+            setPincode(cleanPin);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch address from map coordinates:', err);
+    } finally {
+      setFetchingAddress(false);
+    }
+  }, []);
+
+  const handleGetCurrentLocation = () => {
+    if (typeof window !== 'undefined' && navigator.geolocation) {
+      setGettingGps(true);
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          setLatitude(lat);
+          setLongitude(lng);
+          fetchLocationAddress(lat, lng);
+          setGettingGps(false);
+        },
+        (error) => {
+          console.error('GPS error:', error);
+          setGettingGps(false);
+          Alert.alert('GPS Notice', 'Unable to retrieve GPS location. Tap on the map to pin your location manually.');
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    } else {
+      Alert.alert('GPS Notice', 'GPS location is not supported on this browser/device.');
+    }
+  };
+
+  const handleLocationSelect = useCallback((lat: number, lng: number) => {
+    setLatitude(lat);
+    setLongitude(lng);
+    fetchLocationAddress(lat, lng);
+  }, [fetchLocationAddress]);
+
   // Step 1 Validation
   const contactNameRes = validateFullName(contactName);
   const emailRes = validateEmail(email);
   const phoneRes = validatePhone(phone);
   const passwordRes = validatePassword(password);
   const confirmMatches = password.length > 0 && confirmPassword === password;
+  const isBusinessNameValid = businessName.trim().length >= 2;
 
-  const isStep1Valid = contactNameRes.isValid && emailRes.isValid && phoneRes.isValid && passwordRes.isValid && confirmMatches;
+  const isStep1Valid =
+    contactNameRes.isValid &&
+    isBusinessNameValid &&
+    emailRes.isValid &&
+    phoneRes.isValid &&
+    passwordRes.isValid &&
+    confirmMatches;
 
   // Step 2 Validation
   const isStep2Valid =
-    businessName.trim().length >= 2 &&
     businessAddress.trim().length >= 5 &&
     city.trim().length >= 2 &&
     pincode.trim().length === 6 &&
@@ -182,6 +425,7 @@ export default function ServiceCenterRegister({
     setTouchedFields(prev => ({
       ...prev,
       contactName: true,
+      businessName: true,
       email: true,
       phone: true,
       password: true,
@@ -189,7 +433,7 @@ export default function ServiceCenterRegister({
     }));
 
     if (!isStep1Valid) {
-      setAuthError('Please complete all account fields correctly.');
+      setAuthError('Please complete all account and workshop details correctly.');
       return;
     }
     setStep(2);
@@ -199,7 +443,6 @@ export default function ServiceCenterRegister({
     setAuthError('');
     setTouchedFields(prev => ({
       ...prev,
-      businessName: true,
       businessAddress: true,
       city: true,
       pincode: true
@@ -243,6 +486,8 @@ export default function ServiceCenterRegister({
         service_center_address: businessAddress.trim(),
         city: city.trim(),
         pincode: pincode.trim(),
+        latitude,
+        longitude,
         servicesOffered: selectedServices,
         operatingHours: operatingHours || '9:00 AM - 6:00 PM',
         businessRegistrationNumber: registrationNumber ? registrationNumber.trim() : '',
@@ -338,6 +583,31 @@ export default function ServiceCenterRegister({
                   setTouchedFields(prev => ({ ...prev, contactName: true }));
                 }}
                 autoCapitalize="words"
+              />
+            </View>
+          </View>
+
+          {/* Workshop / Service Center Name */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Workshop / Service Center Name</Text>
+            <View
+              style={[
+                styles.inputContainer,
+                focusedField === 'businessName' && styles.inputFocused,
+                touchedFields.businessName && businessName.trim().length < 2 && styles.inputError
+              ]}
+            >
+              <TextInput
+                style={styles.textInput}
+                placeholder="e.g. Apex Auto Works"
+                placeholderTextColor="#94A3B8"
+                value={businessName}
+                onChangeText={setBusinessName}
+                onFocus={() => setFocusedField('businessName')}
+                onBlur={() => {
+                  setFocusedField(null);
+                  setTouchedFields(prev => ({ ...prev, businessName: true }));
+                }}
               />
             </View>
           </View>
@@ -479,28 +749,6 @@ export default function ServiceCenterRegister({
       {/* ================= STEP 2 ================= */}
       {step === 2 && (
         <View>
-          {/* Workshop Name */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Workshop / Service Center Name</Text>
-            <View
-              style={[
-                styles.inputContainer,
-                focusedField === 'businessName' && styles.inputFocused,
-                touchedFields.businessName && businessName.trim().length < 2 && styles.inputError
-              ]}
-            >
-              <TextInput
-                style={styles.textInput}
-                placeholder="e.g. Apex Auto Works"
-                placeholderTextColor="#94A3B8"
-                value={businessName}
-                onChangeText={setBusinessName}
-                onFocus={() => setFocusedField('businessName')}
-                onBlur={() => setFocusedField(null)}
-              />
-            </View>
-          </View>
-
           {/* Category */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Workshop Category</Text>
@@ -545,6 +793,54 @@ export default function ServiceCenterRegister({
                 onBlur={() => setFocusedField(null)}
               />
             </View>
+          </View>
+
+          {/* OpenStreetMap & GPS Location Section */}
+          <View style={styles.mapSection}>
+            <View style={styles.mapHeaderRow}>
+              <Text style={styles.label}>OpenStreetMap Location Picker</Text>
+              <TouchableOpacity
+                style={styles.gpsBtn}
+                onPress={handleGetCurrentLocation}
+                disabled={gettingGps}
+                activeOpacity={0.8}
+              >
+                {gettingGps ? (
+                  <ActivityIndicator size="small" color="#16A34A" />
+                ) : (
+                  <Ionicons name="location" size={14} color="#16A34A" />
+                )}
+                <Text style={styles.gpsBtnText}>{gettingGps ? 'Locating...' : 'Use GPS Location'}</Text>
+              </TouchableOpacity>
+            </View>
+
+            {Platform.OS === 'web' ? (
+              <WebIframeMap
+                initialLat={latitude}
+                initialLng={longitude}
+                onLocationSelect={handleLocationSelect}
+              />
+            ) : (
+              <NativeWebViewMap
+                initialLat={latitude}
+                initialLng={longitude}
+                onLocationSelect={handleLocationSelect}
+              />
+            )}
+
+            {fetchingAddress ? (
+              <View style={styles.geocodingBox}>
+                <ActivityIndicator size="small" color="#16A34A" />
+                <Text style={styles.geocodingText}>Auto-detecting address details...</Text>
+              </View>
+            ) : fetchedAddress ? (
+              <View style={styles.geocodingBox}>
+                <Ionicons name="checkmark-circle-outline" size={14} color="#16A34A" />
+                <Text style={styles.geocodingText} numberOfLines={2}>
+                  Pinned: {fetchedAddress}
+                </Text>
+              </View>
+            ) : null}
           </View>
 
           {/* City & Pincode */}
@@ -1074,5 +1370,86 @@ const styles = StyleSheet.create({
   secondaryLinkBold: {
     color: '#16A34A',
     fontWeight: '600'
+  },
+  mapSection: {
+    marginBottom: 16
+  },
+  mapHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8
+  },
+  gpsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6
+  },
+  gpsBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#15803D'
+  },
+  mapWrapper: {
+    height: 180,
+    width: '100%',
+    borderRadius: 10,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#F1F5F9',
+    position: 'relative'
+  },
+  mapLoading: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    gap: 6,
+    zIndex: 2
+  },
+  mapLoadingText: {
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: '500'
+  },
+  webView: {
+    flex: 1
+  },
+  webViewHidden: {
+    flex: 0,
+    height: 0
+  },
+  mapFallback: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16
+  },
+  mapFallbackText: {
+    fontSize: 12,
+    color: '#64748B'
+  },
+  geocodingBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: '#F0FDF4',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#BBF7D0'
+  },
+  geocodingText: {
+    fontSize: 11,
+    color: '#15803D',
+    fontWeight: '500',
+    flex: 1
   }
 });

@@ -13,22 +13,27 @@ import {
   Alert,
   SafeAreaView
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { adminApi } from '../../src/api/adminApi';
 import BackButton from '../../src/components/ui/BackButton';
 
 const THEME = {
-  background: '#F4F6F9',      // Premium light grey/blue from Autodoc
-  card: '#FFFFFF',            // Pure white card background
-  border: '#E2E8F0',          // Soft light slate border
-  inputBg: '#EEF2F6',         // Muted input background
-  text: '#0F172A',            // Charcoal/Navy text from Autodoc
-  textSecondary: '#64748B',   // Slate grey subtext
-  primary: '#0046AD',         // Deep Royal Blue from Autodoc
-  accent: '#F5A524',          // Amber accent
+  background: '#F8FAFC',
+  card: '#FFFFFF',
+  border: '#E2E8F0',
+  inputBg: '#F1F5F9',
+  text: '#0F172A',
+  textSecondary: '#64748B',
+  primary: '#0046AD',
+  primaryLight: '#EEF2FF',
+  primaryBorder: '#C7D2FE',
+  accent: '#F59E0B',
   accentLight: '#FEF3C7',
   success: '#10B981',
+  successLight: '#D1FAE5',
   error: '#EF4444',
-  buttonBg: '#EEF2F6',
+  errorLight: '#FEE2E2',
+  buttonBg: '#F1F5F9',
 };
 
 export default function ServiceCenterDetailScreen({ centerId, onBack, onActionSuccess }) {
@@ -36,7 +41,7 @@ export default function ServiceCenterDetailScreen({ centerId, onBack, onActionSu
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState('');
   const [center, setCenter] = useState(null);
-  
+
   // Rejection state
   const [showRejectionInput, setShowRejectionInput] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
@@ -132,8 +137,8 @@ export default function ServiceCenterDetailScreen({ centerId, onBack, onActionSu
 
   const isImageFile = (url) => {
     if (!url) return false;
-    const extension = url.split('.').pop().toLowerCase();
-    return ['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(extension);
+    const extension = url.split('.').pop()?.toLowerCase();
+    return extension && ['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(extension);
   };
 
   const handleOpenDoc = async () => {
@@ -144,11 +149,11 @@ export default function ServiceCenterDetailScreen({ centerId, onBack, onActionSu
       if (supported || Platform.OS === 'web') {
         await Linking.openURL(url);
       } else {
-        Alert.alert('Error', "Cannot open document URL directly");
+        Alert.alert('Error', 'Cannot open document URL directly');
       }
     } catch (err) {
       console.error(err);
-      Alert.alert('Error', "An error occurred trying to open the link");
+      Alert.alert('Error', 'An error occurred trying to open the link');
     }
   };
 
@@ -156,8 +161,8 @@ export default function ServiceCenterDetailScreen({ centerId, onBack, onActionSu
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={THEME.accent} />
-          <Text style={styles.loadingText}>Loading details...</Text>
+          <ActivityIndicator size="large" color={THEME.primary} />
+          <Text style={styles.loadingText}>Loading Workshop Details...</Text>
         </View>
       </SafeAreaView>
     );
@@ -168,7 +173,7 @@ export default function ServiceCenterDetailScreen({ centerId, onBack, onActionSu
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
           <BackButton variant="card" label="Back" onPress={onBack} />
-          <Text style={styles.headerTitle}>Review Center</Text>
+          <Text style={styles.headerTitle}>Review Workshop</Text>
         </View>
         <View style={styles.centerContainer}>
           <Text style={styles.errorText}>{error}</Text>
@@ -189,6 +194,8 @@ export default function ServiceCenterDetailScreen({ centerId, onBack, onActionSu
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={true} persistentScrollbar={true}>
+        
+        {/* Header Bar */}
         <View style={styles.header}>
           <BackButton variant="card" label="Back" onPress={onBack} />
           <Text style={styles.headerTitle}>Review Workshop</Text>
@@ -196,60 +203,112 @@ export default function ServiceCenterDetailScreen({ centerId, onBack, onActionSu
 
         {error ? <Text style={styles.errorBanner}>{error}</Text> : null}
 
-        {/* Business Info Card */}
-        <View style={styles.card}>
-          <Text style={styles.cardHeaderTitle}>🛠️ Business Details</Text>
-          <Text style={styles.businessName}>{center.businessName}</Text>
-          
-          <View style={styles.detailRow}>
-            <Text style={styles.label}>Registration Number</Text>
-            <Text style={styles.value}>{center.businessRegistrationNumber}</Text>
-          </View>
-
-          <View style={styles.detailRow}>
-            <Text style={styles.label}>Contact Person</Text>
-            <Text style={styles.value}>{center.contactPersonName || center.contactPerson || 'N/A'}</Text>
-          </View>
-
-          <View style={styles.detailRow}>
-            <Text style={styles.label}>Email Address</Text>
-            <Text style={styles.value}>{managerUser.email || 'N/A'}</Text>
-          </View>
-
-          <View style={styles.detailRow}>
-            <Text style={styles.label}>Phone Number</Text>
-            <Text style={styles.value}>{managerUser.phone || 'N/A'}</Text>
-          </View>
-        </View>
-
-        {/* Address Card */}
-        <View style={styles.card}>
-          <Text style={styles.cardHeaderTitle}>📍 Location</Text>
-          <View style={styles.detailRow}>
-            <Text style={styles.label}>Address</Text>
-            <Text style={styles.value}>{center.businessAddress || center.address}</Text>
-          </View>
-
-          <View style={styles.row}>
+        {/* Hero Workshop Banner Card */}
+        <View style={styles.heroCard}>
+          <View style={styles.heroHeaderRow}>
+            <View style={styles.workshopIconCircle}>
+              <Ionicons name="construct" size={24} color={THEME.primary} />
+            </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.label}>City</Text>
-              <Text style={styles.value}>{center.city}</Text>
+              <Text style={styles.businessName}>{center.businessName || 'Unnamed Workshop'}</Text>
+              <Text style={styles.categorySubtext}>
+                {center.businessType || center.category || 'Service Center Partner'}
+              </Text>
             </View>
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={styles.label}>Pincode</Text>
-              <Text style={styles.value}>{center.pincode}</Text>
+            <View style={styles.statusBadge}>
+              <Text style={styles.statusBadgeText}>⏳ Pending</Text>
             </View>
           </View>
         </View>
 
-        {/* Services Card */}
+        {/* Business Details Card */}
         <View style={styles.card}>
-          <Text style={styles.cardHeaderTitle}>⚙️ Services Offered</Text>
+          <View style={styles.cardHeaderBadge}>
+            <Ionicons name="briefcase-outline" size={16} color={THEME.primary} />
+            <Text style={styles.cardHeaderTitle}>Business Details</Text>
+          </View>
+
+          <View style={styles.gridContainer}>
+            <View style={styles.gridItem}>
+              <Text style={styles.label}>Registration Number</Text>
+              <Text style={styles.valueHighlight}>
+                {center.businessRegistrationNumber || 'Not provided (Optional)'}
+              </Text>
+            </View>
+
+            <View style={styles.gridItem}>
+              <Text style={styles.label}>Contact Person / Manager</Text>
+              <View style={styles.valueRow}>
+                <Ionicons name="person-outline" size={14} color={THEME.textSecondary} />
+                <Text style={styles.value}>{center.contactPersonName || center.contactPerson || managerUser.name || 'N/A'}</Text>
+              </View>
+            </View>
+
+            <View style={styles.gridItem}>
+              <Text style={styles.label}>Business Email</Text>
+              <View style={styles.valueRow}>
+                <Ionicons name="mail-outline" size={14} color={THEME.textSecondary} />
+                <Text style={styles.value}>{managerUser.email || center.email || 'N/A'}</Text>
+              </View>
+            </View>
+
+            <View style={styles.gridItem}>
+              <Text style={styles.label}>Phone Number</Text>
+              <View style={styles.valueRow}>
+                <Ionicons name="call-outline" size={14} color={THEME.textSecondary} />
+                <Text style={styles.value}>{managerUser.phone || center.phone || 'Not provided'}</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Location Card */}
+        <View style={styles.card}>
+          <View style={styles.cardHeaderBadge}>
+            <Ionicons name="location-outline" size={16} color={THEME.primary} />
+            <Text style={styles.cardHeaderTitle}>Location & Address</Text>
+          </View>
+
+          <View style={styles.addressBox}>
+            <Ionicons name="map-outline" size={18} color={THEME.primary} style={{ marginTop: 2 }} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.addressTitle}>Address</Text>
+              <Text style={styles.addressText}>{center.businessAddress || center.address || 'Address not provided'}</Text>
+            </View>
+          </View>
+
+          <View style={styles.twoColRow}>
+            <View style={styles.colBox}>
+              <Text style={styles.label}>City</Text>
+              <Text style={styles.valueBold}>{center.city || 'N/A'}</Text>
+            </View>
+            <View style={styles.colBox}>
+              <Text style={styles.label}>Pincode</Text>
+              <Text style={styles.valueBold}>{center.pincode || 'N/A'}</Text>
+            </View>
+          </View>
+
+          {center.operatingHours ? (
+            <View style={styles.operatingHoursRow}>
+              <Ionicons name="time-outline" size={14} color={THEME.primary} />
+              <Text style={styles.operatingHoursText}>Operating Hours: <Text style={{ fontWeight: '700' }}>{center.operatingHours}</Text></Text>
+            </View>
+          ) : null}
+        </View>
+
+        {/* Services Offered Card */}
+        <View style={styles.card}>
+          <View style={styles.cardHeaderBadge}>
+            <Ionicons name="cog-outline" size={16} color={THEME.primary} />
+            <Text style={styles.cardHeaderTitle}>Services Offered</Text>
+          </View>
+
           <View style={styles.chipsContainer}>
             {center.servicesOffered && center.servicesOffered.length > 0 ? (
               center.servicesOffered.map((service, index) => (
-                <View key={index} style={styles.chip}>
-                  <Text style={styles.chipText}>{service}</Text>
+                <View key={index} style={styles.serviceChip}>
+                  <Ionicons name="checkmark-circle" size={14} color={THEME.primary} />
+                  <Text style={styles.serviceChipText}>{service}</Text>
                 </View>
               ))
             ) : (
@@ -258,9 +317,13 @@ export default function ServiceCenterDetailScreen({ centerId, onBack, onActionSu
           </View>
         </View>
 
-        {/* Document Card */}
+        {/* Registration Proof Document Card */}
         <View style={styles.card}>
-          <Text style={styles.cardHeaderTitle}>📄 Registration Proof Document</Text>
+          <View style={styles.cardHeaderBadge}>
+            <Ionicons name="document-text-outline" size={16} color={THEME.primary} />
+            <Text style={styles.cardHeaderTitle}>Registration Proof Document</Text>
+          </View>
+
           {center.businessDocumentUrl ? (
             <View style={styles.documentContainer}>
               {docIsImage ? (
@@ -271,28 +334,35 @@ export default function ServiceCenterDetailScreen({ centerId, onBack, onActionSu
                 />
               ) : (
                 <View style={styles.docIconWrapper}>
-                  <Text style={styles.docLargeIcon}>📁</Text>
-                  <Text style={styles.docFileText}>Document (PDF / File)</Text>
+                  <Ionicons name="folder-open-outline" size={40} color={THEME.primary} />
+                  <Text style={styles.docFileText}>Business License / Certificate File</Text>
                 </View>
               )}
-              <TouchableOpacity style={styles.viewDocBtn} onPress={handleOpenDoc}>
+              <TouchableOpacity style={styles.viewDocBtn} onPress={handleOpenDoc} activeOpacity={0.85}>
+                <Ionicons name="open-outline" size={16} color={THEME.primary} />
                 <Text style={styles.viewDocBtnText}>Open Document Link ↗</Text>
               </TouchableOpacity>
             </View>
           ) : (
-            <Text style={styles.value}>No proof document uploaded</Text>
+            <View style={styles.noDocBox}>
+              <Ionicons name="information-circle-outline" size={18} color={THEME.textSecondary} />
+              <Text style={styles.noDocText}>No proof document uploaded (Optional)</Text>
+            </View>
           )}
         </View>
 
         {/* Rejection Reason Form */}
         {showRejectionInput && (
           <View style={styles.rejectionCard}>
-            <Text style={styles.rejectionCardTitle}>Decline Registration</Text>
-            <Text style={styles.rejectionLabel}>Provide a reason for declining this request</Text>
+            <View style={styles.rejectionHeaderRow}>
+              <Ionicons name="alert-circle" size={20} color={THEME.error} />
+              <Text style={styles.rejectionCardTitle}>Decline Partner Registration</Text>
+            </View>
+            <Text style={styles.rejectionLabel}>Specify a reason for declining this request:</Text>
             <TextInput
               style={styles.rejectionInput}
-              placeholder="e.g. Document upload is blur, incorrect registration number"
-              placeholderTextColor="#888"
+              placeholder="e.g. Document image is blur, missing trade license info..."
+              placeholderTextColor="#94A3B8"
               multiline
               numberOfLines={3}
               value={rejectionReason}
@@ -327,14 +397,16 @@ export default function ServiceCenterDetailScreen({ centerId, onBack, onActionSu
           </View>
         )}
 
-        {/* Action Buttons */}
+        {/* Bottom Action Buttons */}
         {!showRejectionInput && (
           <View style={styles.actionsContainer}>
             <TouchableOpacity
               style={[styles.actionBtn, styles.declineBtn]}
               onPress={() => setShowRejectionInput(true)}
               disabled={actionLoading}
+              activeOpacity={0.8}
             >
+              <Ionicons name="close-circle-outline" size={18} color={THEME.error} />
               <Text style={styles.declineBtnText}>Decline Partner</Text>
             </TouchableOpacity>
 
@@ -342,15 +414,20 @@ export default function ServiceCenterDetailScreen({ centerId, onBack, onActionSu
               style={[styles.actionBtn, styles.approveBtn]}
               onPress={handleApprove}
               disabled={actionLoading}
+              activeOpacity={0.85}
             >
               {actionLoading ? (
                 <ActivityIndicator size="small" color="#FFF" />
               ) : (
-                <Text style={styles.approveBtnText}>Approve Partner</Text>
+                <>
+                  <Ionicons name="checkmark-circle" size={18} color="#FFF" />
+                  <Text style={styles.approveBtnText}>Approve Partner</Text>
+                </>
               )}
             </TouchableOpacity>
           </View>
         )}
+
       </ScrollView>
     </SafeAreaView>
   );
@@ -363,37 +440,22 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 50
+    paddingBottom: 60
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
-    paddingTop: 12,
+    marginBottom: 16,
+    paddingTop: Platform.OS === 'web' ? 8 : 12,
     position: 'relative'
-  },
-  backBtn: {
-    position: 'absolute',
-    left: 0,
-    zIndex: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: THEME.border
-  },
-  backBtnText: {
-    color: THEME.text,
-    fontSize: 13,
-    fontWeight: 'bold'
   },
   headerTitle: {
     flex: 1,
     textAlign: 'center',
     fontSize: 18,
-    fontWeight: 'bold',
-    color: THEME.text
+    fontWeight: '800',
+    color: THEME.text,
+    letterSpacing: -0.3
   },
   centerContainer: {
     flex: 1,
@@ -405,7 +467,8 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 14,
     color: THEME.textSecondary,
-    marginTop: 12
+    marginTop: 12,
+    fontWeight: '600'
   },
   errorText: {
     fontSize: 14,
@@ -414,157 +477,322 @@ const styles = StyleSheet.create({
     marginBottom: 16
   },
   retryBtn: {
-    backgroundColor: THEME.accent,
+    backgroundColor: THEME.primary,
     paddingVertical: 10,
     paddingHorizontal: 20,
-    borderRadius: 8
+    borderRadius: 10
   },
   retryBtnText: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: 'bold'
+    fontWeight: '700'
   },
   errorBanner: {
     color: THEME.error,
-    backgroundColor: '#FEE2E2',
+    backgroundColor: THEME.errorLight,
     borderColor: '#FCA5A5',
     borderWidth: 1,
-    borderRadius: 8,
+    borderRadius: 10,
     padding: 12,
     marginBottom: 16,
     fontSize: 13,
-    fontWeight: '500'
+    fontWeight: '600'
   },
+
+  // Hero Card
+  heroCard: {
+    backgroundColor: THEME.card,
+    borderRadius: 16,
+    padding: 18,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: THEME.border,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2
+  },
+  heroHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12
+  },
+  workshopIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: THEME.primaryLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: THEME.primaryBorder
+  },
+  businessName: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: THEME.text,
+    letterSpacing: -0.3
+  },
+  categorySubtext: {
+    fontSize: 12,
+    color: THEME.textSecondary,
+    fontWeight: '600',
+    marginTop: 2
+  },
+  statusBadge: {
+    backgroundColor: THEME.accentLight,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FDE68A'
+  },
+  statusBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#D97706'
+  },
+
+  // Cards
   card: {
     backgroundColor: THEME.card,
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
     borderColor: THEME.border,
-    shadowColor: '#000000',
+    shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
     elevation: 2
   },
+  cardHeaderBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    backgroundColor: THEME.primaryLight,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: THEME.primaryBorder
+  },
   cardHeaderTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: THEME.textSecondary,
-    marginBottom: 12,
+    fontSize: 12,
+    fontWeight: '800',
+    color: THEME.primary,
     textTransform: 'uppercase',
     letterSpacing: 0.5
   },
-  businessName: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: THEME.text,
-    marginBottom: 16
+
+  // Grid & Detail Rows
+  gridContainer: {
+    gap: 12
   },
-  detailRow: {
-    marginBottom: 12
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between'
+  gridItem: {
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9'
   },
   label: {
     fontSize: 11,
     color: THEME.textSecondary,
-    marginBottom: 4
+    fontWeight: '600',
+    marginBottom: 3
   },
   value: {
     fontSize: 14,
     color: THEME.text,
-    fontWeight: '500'
+    fontWeight: '600'
   },
+  valueHighlight: {
+    fontSize: 14,
+    color: THEME.primary,
+    fontWeight: '700'
+  },
+  valueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6
+  },
+  valueBold: {
+    fontSize: 14,
+    color: THEME.text,
+    fontWeight: '700'
+  },
+
+  // Location Card
+  addressBox: {
+    flexDirection: 'row',
+    gap: 10,
+    backgroundColor: '#F8FAFC',
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: THEME.border,
+    marginBottom: 12
+  },
+  addressTitle: {
+    fontSize: 11,
+    color: THEME.textSecondary,
+    fontWeight: '600',
+    marginBottom: 2
+  },
+  addressText: {
+    fontSize: 13,
+    color: THEME.text,
+    fontWeight: '700',
+    lineHeight: 18
+  },
+  twoColRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 10
+  },
+  colBox: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: THEME.border
+  },
+  operatingHoursRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: THEME.primaryLight,
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: THEME.primaryBorder
+  },
+  operatingHoursText: {
+    fontSize: 12,
+    color: THEME.primary
+  },
+
+  // Services Chips
   chipsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
     marginTop: 4
   },
-  chip: {
-    backgroundColor: THEME.buttonBg,
-    borderRadius: 16,
+  serviceChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: THEME.primaryLight,
+    borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderWidth: 1,
-    borderColor: THEME.border
+    borderColor: THEME.primaryBorder
   },
-  chipText: {
+  serviceChipText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: THEME.text
+    fontWeight: '700',
+    color: THEME.primary
   },
+
+  // Document Card
   documentContainer: {
     alignItems: 'center',
-    backgroundColor: THEME.inputBg,
-    borderRadius: 8,
-    padding: 16,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: THEME.border,
     marginTop: 4
   },
   documentImage: {
     width: '100%',
     height: 180,
-    borderRadius: 6,
+    borderRadius: 8,
     marginBottom: 12,
     backgroundColor: '#FFFFFF'
   },
   docIconWrapper: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 20
-  },
-  docLargeIcon: {
-    fontSize: 48,
-    marginBottom: 8
+    paddingVertical: 16
   },
   docFileText: {
-    fontSize: 12,
-    color: THEME.textSecondary,
-    fontWeight: 'bold'
+    fontSize: 13,
+    color: THEME.text,
+    fontWeight: '700',
+    marginTop: 6
   },
   viewDocBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
     backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: THEME.border,
-    paddingVertical: 8,
+    borderWidth: 1.5,
+    borderColor: THEME.primary,
+    paddingVertical: 10,
     paddingHorizontal: 16,
-    borderRadius: 6,
-    width: '100%',
-    alignItems: 'center'
+    borderRadius: 10,
+    width: '100%'
   },
   viewDocBtnText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: THEME.text
+    fontSize: 13,
+    fontWeight: '700',
+    color: THEME.primary
   },
-  rejectionCard: {
-    backgroundColor: '#FFFBEB',
-    borderRadius: 12,
+  noDocBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#F8FAFC',
+    padding: 12,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#FDE68A',
+    borderColor: THEME.border
+  },
+  noDocText: {
+    fontSize: 13,
+    color: THEME.textSecondary,
+    fontWeight: '500'
+  },
+
+  // Rejection Card
+  rejectionCard: {
+    backgroundColor: THEME.errorLight,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
     padding: 16,
     marginBottom: 16
   },
+  rejectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4
+  },
   rejectionCardTitle: {
     fontSize: 15,
-    fontWeight: 'bold',
-    color: '#92400E',
-    marginBottom: 4
+    fontWeight: '800',
+    color: THEME.error
   },
   rejectionLabel: {
     fontSize: 12,
-    color: '#B45309',
-    marginBottom: 10
+    color: '#991B1B',
+    marginBottom: 10,
+    fontWeight: '500'
   },
   rejectionInput: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#FDE68A',
-    borderRadius: 8,
+    borderColor: '#FCA5A5',
+    borderRadius: 10,
     padding: 12,
     fontSize: 13,
     color: THEME.text,
@@ -579,20 +807,20 @@ const styles = StyleSheet.create({
   },
   smallBtn: {
     flex: 1,
-    height: 38,
-    borderRadius: 8,
+    height: 42,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center'
   },
   cancelSmallBtn: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#FDE68A'
+    borderColor: '#CBD5E1'
   },
   cancelSmallBtnText: {
-    color: '#B45309',
+    color: THEME.textSecondary,
     fontSize: 13,
-    fontWeight: 'bold'
+    fontWeight: '700'
   },
   confirmDeclineBtn: {
     backgroundColor: THEME.error
@@ -600,37 +828,45 @@ const styles = StyleSheet.create({
   confirmDeclineBtnText: {
     color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: 'bold'
+    fontWeight: '700'
   },
+
+  // Bottom Actions
   actionsContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 16,
-    marginTop: 8
+    gap: 12,
+    marginTop: 4
   },
   actionBtn: {
     flex: 1,
     height: 48,
-    borderRadius: 8,
+    borderRadius: 12,
+    flexDirection: 'row',
     justifyContent: 'center',
-    alignItems: 'center'
+    alignItems: 'center',
+    gap: 8
   },
   declineBtn: {
     backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: THEME.border
+    borderWidth: 1.5,
+    borderColor: '#FECACA'
   },
   declineBtnText: {
-    color: THEME.textSecondary,
+    color: THEME.error,
     fontSize: 14,
-    fontWeight: 'bold'
+    fontWeight: '700'
   },
   approveBtn: {
-    backgroundColor: THEME.primary
+    backgroundColor: THEME.primary,
+    elevation: 2,
+    shadowColor: THEME.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4
   },
   approveBtnText: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: 'bold'
+    fontWeight: '700'
   }
 });

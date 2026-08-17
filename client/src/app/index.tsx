@@ -15,7 +15,11 @@ import { api, setToken, getToken, subscribeToToken } from '../services/api';
 
 // Importing Role Dashboard Home Screens
 import OwnerHomeScreen from './owner/OwnerHomeScreen';
+import OwnerServiceCentersScreen from './owner/OwnerServiceCentersScreen';
 import ServiceCenterHomeScreen from './serviceCenter/ServiceCenterHomeScreen';
+import ServiceCenterAppointmentsScreen from './serviceCenter/ServiceCenterAppointmentsScreen';
+import ServiceCenterInventoryScreen from './serviceCenter/ServiceCenterInventoryScreen';
+import ServiceCenterRoadsideScreen from './serviceCenter/ServiceCenterRoadsideScreen';
 import AdminHomeScreen from './admin/AdminHomeScreen';
 import PendingApprovalScreen from '../../screens/PendingApprovalScreen';
 import ProfileEditScreen from '../../screens/ProfileEditScreen';
@@ -448,13 +452,7 @@ export default function AppIndex() {
         );
       }
       if (activeTab === 'Service Centers') {
-        return (
-          <ScrollView contentContainerStyle={styles.paddedContent} showsVerticalScrollIndicator={true}>
-            <BackButton variant="card" label="Back to Home" onPress={() => setActiveTab('Home')} style={{ marginBottom: 12 }} />
-            <Text style={styles.viewHeader}>Partners & Service Centers</Text>
-            <Text style={styles.mutedText}>List of verified partner service centers will appear here.</Text>
-          </ScrollView>
-        );
+        return <OwnerServiceCentersScreen onBack={() => setActiveTab('Home')} />;
       }
       if (activeTab === 'Roadside') {
         return (
@@ -474,31 +472,13 @@ export default function AppIndex() {
         return <ServiceCenterHomeScreen user={user} onNavigateToTab={(t) => setActiveTab(t as any)} />;
       }
       if (activeTab === 'Appointments') {
-        return (
-          <ScrollView contentContainerStyle={styles.paddedContent} showsVerticalScrollIndicator={true}>
-            <BackButton variant="card" label="Back to Home" onPress={() => setActiveTab('Home')} style={{ marginBottom: 12 }} />
-            <Text style={styles.viewHeader}>Appointments Registry</Text>
-            <Text style={styles.mutedText}>Manage customer service bookings and schedules.</Text>
-          </ScrollView>
-        );
+        return <ServiceCenterAppointmentsScreen onBack={() => setActiveTab('Home')} />;
       }
       if (activeTab === 'Spare Parts') {
-        return (
-          <ScrollView contentContainerStyle={styles.paddedContent} showsVerticalScrollIndicator={true}>
-            <BackButton variant="card" label="Back to Home" onPress={() => setActiveTab('Home')} style={{ marginBottom: 12 }} />
-            <Text style={styles.viewHeader}>Spare Parts Inventory</Text>
-            <Text style={styles.mutedText}>Track parts inventory levels and catalog pricing.</Text>
-          </ScrollView>
-        );
+        return <ServiceCenterInventoryScreen onBack={() => setActiveTab('Home')} />;
       }
       if (activeTab === 'Roadside Requests') {
-        return (
-          <ScrollView contentContainerStyle={styles.paddedContent} showsVerticalScrollIndicator={true}>
-            <BackButton variant="card" label="Back to Home" onPress={() => setActiveTab('Home')} style={{ marginBottom: 12 }} />
-            <Text style={styles.viewHeader}>Roadside Breakdowns</Text>
-            <Text style={styles.mutedText}>Active breakdown and towing dispatch requests.</Text>
-          </ScrollView>
-        );
+        return <ServiceCenterRoadsideScreen onBack={() => setActiveTab('Home')} />;
       }
     }
 

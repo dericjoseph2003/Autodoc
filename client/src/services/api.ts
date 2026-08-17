@@ -97,6 +97,7 @@ export const api = {
   login: (body: any) => request('/users/login', { method: 'POST', body: JSON.stringify(body) }),
   googleLogin: (idToken: string, role: string = 'owner') => request('/users/google-login', { method: 'POST', body: JSON.stringify({ idToken, role }) }),
   forgotPassword: (email: string) => request('/users/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
+  verifyOtp: (body: { email: string; otp: string }) => request('/users/verify-otp', { method: 'POST', body: JSON.stringify(body) }),
   resetPassword: (body: { email: string; otp: string; newPassword: string }) => request('/users/reset-password', { method: 'POST', body: JSON.stringify(body) }),
   getProfile: () => request('/users/profile'),
   updateProfile: (body: any) => request('/users/profile', { method: 'PUT', body: JSON.stringify(body) }),
@@ -166,6 +167,8 @@ export const api = {
   },
 
   createSparePart: (body: any) => request('/spare-parts', { method: 'POST', body: JSON.stringify(body) }),
+  updateSparePart: (id: string, body: any) => request(`/spare-parts/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+  deleteSparePart: (id: string) => request(`/spare-parts/${id}`, { method: 'DELETE' }),
 
   // --- ADMIN: List All Users (real backend) ---
   listAllUsers: () => request('/admin/users'),
