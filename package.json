@@ -1,0 +1,10 @@
+{
+  "name": "autodoc-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "server": "npm start --prefix server",
+    "client": "npm start --prefix client",
+    "dev": "npm run server"
+  }
+}
