@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { register, login, googleLogin, getProfile, updateProfile, forgotPassword, resetPassword } = require('../controllers/userController');
+const { register, login, googleLogin, getProfile, updateProfile, forgotPassword, verifyOtp, resetPassword } = require('../controllers/userController');
 const { protect } = require('../middleware/auth');
 const { registerValidation, loginValidation, forgotPasswordValidation, resetPasswordValidation } = require('../middleware/validators');
 const { loginLimiter, registerLimiter } = require('../middleware/rateLimiter');
@@ -10,6 +10,7 @@ router.post('/register', registerLimiter, registerValidation, register);
 router.post('/login', loginLimiter, loginValidation, login);
 router.post('/google-login', loginLimiter, googleLogin);
 router.post('/forgot-password', forgotPasswordValidation, forgotPassword);
+router.post('/verify-otp', verifyOtp);
 router.post('/reset-password', resetPasswordValidation, resetPassword);
 
 // Protected routes

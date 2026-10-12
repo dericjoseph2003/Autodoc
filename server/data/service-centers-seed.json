@@ -1,0 +1,104 @@
+[
+  {
+    "serviceCenterId": "sc-apex-auto-service",
+    "name": "Apex Auto Service",
+    "type": "Multi-brand Service Center",
+    "location": {
+      "address": "789 Grand Avenue, Industrial Zone",
+      "city": "Mumbai",
+      "lat": 19.0760,
+      "lng": 72.8777
+    },
+    "status": "Approved",
+    "contact": {
+      "phone": "8888888888",
+      "email": "sarah.partner@autodoc.com"
+    },
+    "rating": 4.9
+  },
+  {
+    "serviceCenterId": "sc-sakthi-tyres-koovapally",
+    "name": "Sakthi Tyres & Auto Care",
+    "type": "Multi-brand Service Center",
+    "location": {
+      "address": "KK Road, Koovapally",
+      "city": "Kottayam",
+      "lat": 9.5312,
+      "lng": 76.8173
+    },
+    "status": "Approved",
+    "contact": {
+      "phone": "+91 98765 43210",
+      "email": "sakthi@autodoc.com"
+    },
+    "rating": 4.8
+  },
+  {
+    "serviceCenterId": "sc-royal-motors-kanjirappally",
+    "name": "Royal Motors",
+    "type": "Multi-brand Service Center",
+    "location": {
+      "address": "Main Junction, Kanjirappally",
+      "city": "Kottayam",
+      "lat": 9.5500,
+      "lng": 76.7900
+    },
+    "status": "Approved",
+    "contact": {
+      "phone": "+91 98765 43211",
+      "email": "royal@autodoc.com"
+    },
+    "rating": 4.5
+  },
+  {
+    "serviceCenterId": "sc-heavy-duty-palai",
+    "name": "Heavy Duty Motors",
+    "type": "Commercial Vehicle Center",
+    "location": {
+      "address": "Bypass Road, Palai",
+      "city": "Kottayam",
+      "lat": 9.7100,
+      "lng": 76.6800
+    },
+    "status": "Approved",
+    "contact": {
+      "phone": "+91 98765 43212",
+      "email": "heavyduty@autodoc.com"
+    },
+    "rating": 4.3
+  },
+  {
+    "serviceCenterId": "sc-speedy-lube-thiruvalla",
+    "name": "Speedy Lube & Repairs",
+    "type": "Multi-brand Service Center",
+    "location": {
+      "address": "MC Road, Thiruvalla",
+      "city": "Pathanamthitta",
+      "lat": 9.3800,
+      "lng": 76.5700
+    },
+    "status": "Approved",
+    "contact": {
+      "phone": "+91 98765 43213",
+      "email": "speedylube@autodoc.com"
+    },
+    "rating": 4.7
+  },
+  {
+    "serviceCenterId": "sc-green-ev-changanassery",
+    "name": "GreenEV & Auto Care",
+    "type": "EV & Multi-brand Service Center",
+    "location": {
+      "address": "Bypass Junction, Changanassery",
+      "city": "Kottayam",
+      "lat": 9.4500,
+      "lng": 76.5400
+    },
+    "status": "Pending",
+    "contact": {
+      "phone": "+91 98765 43214",
+      "email": "greenev@autodoc.com"
+    },
+    "rating": 4.0
+  }
+]

@@ -1,0 +1,36 @@
+[
+  { "serviceCenterId": "sc-apex-auto-service", "partSku": "TYR-MRF-155-70", "stockQuantity": 15, "reorderLevel": 5, "sellingPrice": 2900, "lastRestockedAt": "2026-09-01T10:00:00.000Z" },
+  { "serviceCenterId": "sc-apex-auto-service", "partSku": "TYR-CEAT-185-65", "stockQuantity": 10, "reorderLevel": 5, "sellingPrice": 3800, "lastRestockedAt": "2026-09-01T10:00:00.000Z" },
+  { "serviceCenterId": "sc-apex-auto-service", "partSku": "BAT-AMR-35AH", "stockQuantity": 12, "reorderLevel": 4, "sellingPrice": 3700, "lastRestockedAt": "2026-09-05T10:00:00.000Z" },
+  { "serviceCenterId": "sc-apex-auto-service", "partSku": "BRK-BOSCH-SWIFT", "stockQuantity": 18, "reorderLevel": 5, "sellingPrice": 1200, "lastRestockedAt": "2026-09-08T10:00:00.000Z" },
+  { "serviceCenterId": "sc-apex-auto-service", "partSku": "OIL-CAST-5W30-3.5L", "stockQuantity": 25, "reorderLevel": 8, "sellingPrice": 1400, "lastRestockedAt": "2026-09-10T10:00:00.000Z" },
+  { "serviceCenterId": "sc-apex-auto-service", "partSku": "FLT-MANN-AIR-SWIFT", "stockQuantity": 20, "reorderLevel": 6, "sellingPrice": 370, "lastRestockedAt": "2026-09-10T10:00:00.000Z" },
+  { "serviceCenterId": "sc-apex-auto-service", "partSku": "WIP-BOSCH-21-18", "stockQuantity": 15, "reorderLevel": 5, "sellingPrice": 730, "lastRestockedAt": "2026-09-12T10:00:00.000Z" },
+
+  { "serviceCenterId": "sc-sakthi-tyres-koovapally", "partSku": "TYR-MRF-155-70", "stockQuantity": 15, "reorderLevel": 5, "sellingPrice": 2900, "lastRestockedAt": "2026-09-01T10:00:00.000Z" },
+  { "serviceCenterId": "sc-sakthi-tyres-koovapally", "partSku": "TYR-CEAT-185-65", "stockQuantity": 10, "reorderLevel": 5, "sellingPrice": 3800, "lastRestockedAt": "2026-09-01T10:00:00.000Z" },
+  { "serviceCenterId": "sc-sakthi-tyres-koovapally", "partSku": "TYR-BRDG-215-60", "stockQuantity": 4, "reorderLevel": 4, "sellingPrice": 6600, "lastRestockedAt": "2026-08-25T10:00:00.000Z" },
+  { "serviceCenterId": "sc-sakthi-tyres-koovapally", "partSku": "TYR-MICH-265-65", "stockQuantity": 3, "reorderLevel": 2, "sellingPrice": 12700, "lastRestockedAt": "2026-08-20T10:00:00.000Z" },
+  { "serviceCenterId": "sc-sakthi-tyres-koovapally", "partSku": "BRK-BOSCH-SWIFT", "stockQuantity": 12, "reorderLevel": 5, "sellingPrice": 1220, "lastRestockedAt": "2026-09-05T10:00:00.000Z" },
+  { "serviceCenterId": "sc-sakthi-tyres-koovapally", "partSku": "BRK-BREMBO-CRETA", "stockQuantity": 8, "reorderLevel": 3, "sellingPrice": 3400, "lastRestockedAt": "2026-09-02T10:00:00.000Z" },
+  { "serviceCenterId": "sc-sakthi-tyres-koovapally", "partSku": "OIL-MOTUL-5W40-4L", "stockQuantity": 14, "reorderLevel": 5, "sellingPrice": 2900, "lastRestockedAt": "2026-09-10T10:00:00.000Z" },
+  { "serviceCenterId": "sc-sakthi-tyres-koovapally", "partSku": "FLT-DENSO-CABIN-CITY", "stockQuantity": 18, "reorderLevel": 6, "sellingPrice": 530, "lastRestockedAt": "2026-09-10T10:00:00.000Z" },
+  { "serviceCenterId": "sc-sakthi-tyres-koovapally", "partSku": "ALGN-BALANCING-WEIGHTS", "stockQuantity": 25, "reorderLevel": 8, "sellingPrice": 440, "lastRestockedAt": "2026-09-01T10:00:00.000Z" },
+
+  { "serviceCenterId": "sc-royal-motors-kanjirappally", "partSku": "TYR-CEAT-185-65", "stockQuantity": 6, "reorderLevel": 5, "sellingPrice": 3850, "lastRestockedAt": "2026-09-01T10:00:00.000Z" },
+  { "serviceCenterId": "sc-royal-motors-kanjirappally", "partSku": "BAT-EXD-45AH", "stockQuantity": 8, "reorderLevel": 3, "sellingPrice": 5050, "lastRestockedAt": "2026-09-03T10:00:00.000Z" },
+  { "serviceCenterId": "sc-royal-motors-kanjirappally", "partSku": "OIL-MOTUL-7100-2.5L", "stockQuantity": 12, "reorderLevel": 4, "sellingPrice": 1620, "lastRestockedAt": "2026-09-09T10:00:00.000Z" },
+  { "serviceCenterId": "sc-royal-motors-kanjirappally", "partSku": "BAT-AMR-5AH", "stockQuantity": 18, "reorderLevel": 5, "sellingPrice": 1320, "lastRestockedAt": "2026-09-08T10:00:00.000Z" },
+  { "serviceCenterId": "sc-royal-motors-kanjirappally", "partSku": "SPK-NGK-IRIDIUM-4P", "stockQuantity": 10, "reorderLevel": 4, "sellingPrice": 1800, "lastRestockedAt": "2026-09-05T10:00:00.000Z" },
+
+  { "serviceCenterId": "sc-heavy-duty-palai", "partSku": "TYR-MICH-265-65", "stockQuantity": 4, "reorderLevel": 2, "sellingPrice": 12600, "lastRestockedAt": "2026-08-30T10:00:00.000Z" },
+  { "serviceCenterId": "sc-heavy-duty-palai", "partSku": "BAT-AMR-65AH", "stockQuantity": 5, "reorderLevel": 2, "sellingPrice": 7300, "lastRestockedAt": "2026-08-22T10:00:00.000Z" },
+  { "serviceCenterId": "sc-heavy-duty-palai", "partSku": "BRK-TOYOTA-INNOVA", "stockQuantity": 6, "reorderLevel": 3, "sellingPrice": 2800, "lastRestockedAt": "2026-09-06T10:00:00.000Z" },
+  { "serviceCenterId": "sc-heavy-duty-palai", "partSku": "OIL-SHELL-15W40-5L", "stockQuantity": 12, "reorderLevel": 4, "sellingPrice": 2300, "lastRestockedAt": "2026-09-07T10:00:00.000Z" },
+
+  { "serviceCenterId": "sc-speedy-lube-thiruvalla", "partSku": "TYR-MRF-155-70", "stockQuantity": 8, "reorderLevel": 5, "sellingPrice": 2980, "lastRestockedAt": "2026-09-02T10:00:00.000Z" },
+  { "serviceCenterId": "sc-speedy-lube-thiruvalla", "partSku": "OIL-CAST-5W30-3.5L", "stockQuantity": 20, "reorderLevel": 8, "sellingPrice": 1430, "lastRestockedAt": "2026-09-11T10:00:00.000Z" },
+  { "serviceCenterId": "sc-speedy-lube-thiruvalla", "partSku": "FLT-BOSCH-CRETA", "stockQuantity": 15, "reorderLevel": 5, "sellingPrice": 610, "lastRestockedAt": "2026-09-11T10:00:00.000Z" },
+  { "serviceCenterId": "sc-speedy-lube-thiruvalla", "partSku": "WIP-BOSCH-AERO-24", "stockQuantity": 10, "reorderLevel": 4, "sellingPrice": 1130, "lastRestockedAt": "2026-09-05T10:00:00.000Z" },
+  { "serviceCenterId": "sc-speedy-lube-thiruvalla", "partSku": "ACC-PHILIPS-H4", "stockQuantity": 14, "reorderLevel": 5, "sellingPrice": 1420, "lastRestockedAt": "2026-09-04T10:00:00.000Z" }
+]

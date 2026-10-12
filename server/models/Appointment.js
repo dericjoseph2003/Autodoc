@@ -30,8 +30,13 @@ const appointmentSchema = new mongoose.Schema({
   },
   appointment_status: {
     type: String,
-    enum: ['pending', 'confirmed', 'completed', 'cancelled'],
+    enum: ['pending', 'confirmed', 'in_progress', 'completed', 'cancelled', 'rejected'],
     default: 'pending'
+  },
+  attached_part: {
+    part_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Part', default: null },
+    part_name: { type: String, default: '' },
+    price: { type: Number, default: 0 }
   }
 }, {
   collection: 'tbl_appointments',
@@ -42,6 +47,19 @@ const appointmentSchema = new mongoose.Schema({
   toJSON: { virtuals: true },
   toObject: { virtuals: true }
 });
+
+// Database-level safeguard: Compound unique index for active appointments per service center, date, and time slot
+appointmentSchema.index(
+  { service_center_id: 1, appointment_date: 1, appointment_time_slot: 1 },
+  {
+    unique: true,
+    name: 'unique_active_service_center_timeslot',
+    partialFilterExpression: {
+      appointment_status: { $in: ['pending', 'confirmed', 'in_progress'] }
+    }
+  }
+);
+
 
 appointmentSchema.virtual('appointment_id').get(function() { return this._id; });
 

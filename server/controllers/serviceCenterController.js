@@ -194,7 +194,14 @@ const updateApprovalStatus = async (req, res, next) => {
       });
     }
  
-    const serviceCenter = await ServiceCenter.findById(req.params.id);
+    let serviceCenter = null;
+    if (req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+      serviceCenter = await ServiceCenter.findById(req.params.id);
+    }
+    if (!serviceCenter) {
+      serviceCenter = await ServiceCenter.findOne({ serviceCenterId: req.params.id });
+    }
+
     if (!serviceCenter) {
       return res.status(404).json({
         success: false,
@@ -202,11 +209,16 @@ const updateApprovalStatus = async (req, res, next) => {
       });
     }
 
-    if (serviceCenter.approvalStatus === 'approved' || serviceCenter.approvalStatus === 'rejected') {
-      return res.status(400).json({
-        success: false,
-        message: `This service center status is already finalized as '${serviceCenter.approvalStatus}' and cannot be changed again.`
-      });
+    // Attempt to link user_id if missing
+    if (!serviceCenter.user_id) {
+      const emailToMatch = serviceCenter.contact?.email || serviceCenter.email;
+      if (emailToMatch) {
+        const User = require('../models/User');
+        const userMatch = await User.findOne({ user_email: emailToMatch.toLowerCase().trim() });
+        if (userMatch) {
+          serviceCenter.user_id = userMatch._id;
+        }
+      }
     }
  
     serviceCenter.approvalStatus = approvalStatus;
@@ -221,14 +233,16 @@ const updateApprovalStatus = async (req, res, next) => {
 
     await serviceCenter.save();
  
-    await createNotificationInternal(
-      serviceCenter.user_id,
-      'Service Center Status Updated',
-      `Your service center '${serviceCenter.service_center_name}' status has been updated to '${approvalStatus}'.${
-        approvalStatus === 'rejected' ? ` Reason: ${serviceCenter.rejectionReason}` : ''
-      }`,
-      'system'
-    );
+    if (serviceCenter.user_id) {
+      await createNotificationInternal(
+        serviceCenter.user_id,
+        'Service Center Status Updated',
+        `Your service center '${serviceCenter.name || serviceCenter.service_center_name}' status has been updated to '${approvalStatus}'.${
+          approvalStatus === 'rejected' ? ` Reason: ${serviceCenter.rejectionReason}` : ''
+        }`,
+        'system'
+      );
+    }
  
     res.status(200).json({
       success: true,
@@ -284,6 +298,90 @@ const getServiceCenterDetail = async (req, res, next) => {
   }
 };
 
+/**
+ * Get Service Center profile for current logged in user
+ * GET /api/service-centers/my-center
+ */
+const getMyServiceCenter = async (req, res, next) => {
+  try {
+    const currentUserId = req.user._id || req.user.user_id || req.user.id;
+    let serviceCenter = await ServiceCenter.findOne({ user_id: currentUserId });
+
+    if (!serviceCenter && req.user.user_email) {
+      serviceCenter = await ServiceCenter.findOne({
+        $or: [
+          { 'contact.email': req.user.user_email.toLowerCase().trim() },
+          { email: req.user.user_email.toLowerCase().trim() }
+        ]
+      });
+    }
+
+    // Fallback to first available center if guest or unlinked user
+    if (!serviceCenter) {
+      serviceCenter = await ServiceCenter.findOne();
+    }
+
+    res.status(200).json({
+      success: true,
+      serviceCenter: serviceCenter || null
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Update services offered by service center
+ * PUT /api/service-centers/:id/services
+ */
+const updateServiceCenterServices = async (req, res, next) => {
+  try {
+    const { servicesOffered } = req.body;
+    const { id } = req.params;
+
+    if (!Array.isArray(servicesOffered)) {
+      return res.status(400).json({
+        success: false,
+        message: 'servicesOffered must be an array'
+      });
+    }
+
+    let serviceCenter = null;
+    if (id && id !== 'my-center' && id.match(/^[0-9a-fA-F]{24}$/)) {
+      serviceCenter = await ServiceCenter.findById(id);
+    }
+    
+    if (!serviceCenter) {
+      const currentUserId = req.user._id || req.user.user_id || req.user.id;
+      serviceCenter = await ServiceCenter.findOne({
+        $or: [
+          { _id: id.match(/^[0-9a-fA-F]{24}$/) ? id : null },
+          { serviceCenterId: id },
+          { user_id: currentUserId }
+        ]
+      });
+    }
+
+    if (!serviceCenter) {
+      return res.status(404).json({
+        success: false,
+        message: 'Service center profile not found'
+      });
+    }
+
+    serviceCenter.servicesOffered = servicesOffered;
+    await serviceCenter.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Services offered updated successfully',
+      serviceCenter
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   registerServiceCenter,
   approveServiceCenter,
@@ -291,5 +389,8 @@ module.exports = {
   listServiceCenters,
   updateApprovalStatus,
   getPendingServiceCenters,
-  getServiceCenterDetail
+  getServiceCenterDetail,
+  getMyServiceCenter,
+  updateServiceCenterServices
 };
+

@@ -52,7 +52,34 @@ const TIME_SLOT_PRESETS = [
   '5:00 PM - 6:00 PM'
 ];
 
-export default function OwnerServiceCentersScreen({ onBack }: { onBack: () => void }) {
+const generateNext7Days = () => {
+  const days = [];
+  const today = new Date();
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    const isoDate = d.toISOString().split('T')[0];
+    
+    let label = '';
+    if (i === 0) label = 'Today';
+    else if (i === 1) label = 'Tomorrow';
+    else {
+      label = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    }
+    
+    days.push({ value: isoDate, label });
+  }
+  return days;
+};
+
+const DATE_OPTIONS = generateNext7Days();
+
+export interface OwnerServiceCentersScreenProps {
+  onBack: () => void;
+  onViewParts?: (scId: string) => void;
+}
+
+export default function OwnerServiceCentersScreen({ onBack, onViewParts }: OwnerServiceCentersScreenProps) {
   const [loading, setLoading] = useState(false);
   const [centers, setCenters] = useState<any[]>([]);
   const [vehicles, setVehicles] = useState<any[]>([]);
@@ -65,13 +92,62 @@ export default function OwnerServiceCentersScreen({ onBack }: { onBack: () => vo
   const [bookingVehicleId, setBookingVehicleId] = useState('');
   const [customVehicleText, setCustomVehicleText] = useState('');
   const [bookingServiceType, setBookingServiceType] = useState('General Maintenance');
-  const [bookingDate, setBookingDate] = useState('Tomorrow');
+  const [bookingDate, setBookingDate] = useState(DATE_OPTIONS[0].value);
   const [bookingTimeSlot, setBookingTimeSlot] = useState('10:30 AM - 11:30 AM');
   const [bookingNotes, setBookingNotes] = useState('');
   const [submittingBooking, setSubmittingBooking] = useState(false);
   const [bookingSuccessMsg, setBookingSuccessMsg] = useState('');
+  const [bookedSlots, setBookedSlots] = useState<string[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  
+  // Payment State
+  const [isPaymentStep, setIsPaymentStep] = useState(false);
+  const [processingPayment, setProcessingPayment] = useState(false);
+
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      if (typeof window === 'undefined') return resolve(false);
+      if ((window as any).Razorpay) return resolve(true);
+
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  const fetchAvailableSlots = async (center: any, dateStr: string) => {
+    if (!center) return;
+    const centerId = center._id || center.id || center.serviceCenterId;
+    if (!centerId) return;
+    try {
+      setLoadingSlots(true);
+      const res = await api.getAvailableSlots(centerId, dateStr);
+      if (res && res.success) {
+        const locked = res.bookedSlots || [];
+        setBookedSlots(locked);
+        // If current selected slot is locked, auto-select first available slot
+        const available = TIME_SLOT_PRESETS.filter(s => !locked.includes(s));
+        if (available.length > 0 && locked.includes(bookingTimeSlot)) {
+          setBookingTimeSlot(available[0]);
+        }
+      }
+    } catch (e) {
+      console.log('Error fetching available slots:', e);
+    } finally {
+      setLoadingSlots(false);
+    }
+  };
+
+  useEffect(() => {
+    if (showBookingModal && selectedCenter) {
+      fetchAvailableSlots(selectedCenter, bookingDate);
+    }
+  }, [showBookingModal, selectedCenter, bookingDate]);
 
   const loadData = async () => {
+
     try {
       setLoading(true);
       
@@ -105,11 +181,15 @@ export default function OwnerServiceCentersScreen({ onBack }: { onBack: () => vo
   const handleOpenBookingModal = (center: any) => {
     setSelectedCenter(center);
     setBookingSuccessMsg('');
+    setIsPaymentStep(false);
+    setProcessingPayment(false);
 
     // Pre-select first offered service if available
     const offered = center.servicesOffered || [];
-    if (offered.length > 0 && typeof offered[0] === 'string') {
-      setBookingServiceType(offered[0]);
+    if (offered.length > 0) {
+      const firstSvc = offered[0];
+      const firstSvcName = typeof firstSvc === 'string' ? firstSvc : (firstSvc?.name || 'General Maintenance');
+      setBookingServiceType(firstSvcName);
     } else {
       setBookingServiceType('General Maintenance');
     }
@@ -117,26 +197,28 @@ export default function OwnerServiceCentersScreen({ onBack }: { onBack: () => vo
     setShowBookingModal(true);
   };
 
-  const handleConfirmBooking = async () => {
-    if (!selectedCenter) return;
-
+  const processBookingAfterPayment = async (paymentId?: string) => {
     let targetVehicleId = bookingVehicleId;
+    let activeCustomVehicleText = customVehicleText;
 
     // If user has no registered vehicle selected, register a fallback/temp vehicle first or check custom text
-    if (!targetVehicleId && !customVehicleText.trim()) {
-      Alert.alert('Vehicle Required', 'Please select or enter your vehicle details.');
-      return;
+    if (!targetVehicleId && !activeCustomVehicleText.trim()) {
+      if (vehicles.length > 0) {
+        targetVehicleId = vehicles[0]._id || vehicles[0].id;
+      } else {
+        activeCustomVehicleText = "Maruti Suzuki Swift (KL-01-AB-1234)";
+      }
     }
 
     try {
       setSubmittingBooking(true);
 
       // If user typed custom vehicle info, create or find target vehicle ID
-      if (!targetVehicleId && customVehicleText.trim()) {
+      if (!targetVehicleId && activeCustomVehicleText.trim()) {
         try {
           const newV = await api.registerVehicle({
             make: 'My Vehicle',
-            model: customVehicleText.trim(),
+            model: activeCustomVehicleText.trim(),
             year: 2022,
             registrationNumber: `KL-${Math.floor(1000 + Math.random() * 9000)}`
           });
@@ -151,12 +233,13 @@ export default function OwnerServiceCentersScreen({ onBack }: { onBack: () => vo
         targetVehicleId = vehicles[0]._id;
       }
 
+      const scTargetId = selectedCenter._id || selectedCenter.id || selectedCenter.serviceCenterId;
       const payload = {
-        vehicle_id: targetVehicleId || 'guest_vehicle_id',
-        vehicle: targetVehicleId || 'guest_vehicle_id',
-        service_center_id: selectedCenter._id,
-        serviceCenter: selectedCenter._id,
-        appointment_date: bookingDate === 'Today' ? new Date().toISOString().split('T')[0] : bookingDate === 'Tomorrow' ? new Date(Date.now() + 86400000).toISOString().split('T')[0] : bookingDate,
+        vehicle_id: targetVehicleId,
+        vehicle: targetVehicleId,
+        service_center_id: scTargetId,
+        serviceCenter: scTargetId,
+        appointment_date: bookingDate,
         date: bookingDate,
         appointment_time_slot: bookingTimeSlot,
         time: bookingTimeSlot,
@@ -174,15 +257,110 @@ export default function OwnerServiceCentersScreen({ onBack }: { onBack: () => vo
           setBookingNotes('');
         }, 2200);
       } else {
-        Alert.alert('Booking Request Sent', `Service request sent to ${selectedCenter.service_center_name || selectedCenter.businessName}!`);
+        Alert.alert('Booking Notice', `Service request sent to ${selectedCenter.service_center_name || selectedCenter.businessName}!`);
         setShowBookingModal(false);
       }
     } catch (err: any) {
-      console.error('Failed to submit appointment booking:', err);
-      Alert.alert('Booking Notice', `Your booking request for ${bookingServiceType} has been submitted!`);
-      setShowBookingModal(false);
+      Alert.alert('Booking Error', err.message || `Your booking request for ${bookingServiceType} failed.`);
     } finally {
       setSubmittingBooking(false);
+      setProcessingPayment(false);
+    }
+  };
+
+  const handleProceedToPayment = async () => {
+    if (!selectedCenter) return;
+    
+    try {
+      setSubmittingBooking(true);
+      const scTargetId = selectedCenter._id || selectedCenter.id || selectedCenter.serviceCenterId;
+      const targetDate = bookingDate;
+
+      // Lock the slot temporarily
+      const lockRes = await api.lockSlot(scTargetId, targetDate, bookingTimeSlot);
+      if (!lockRes || !lockRes.success) {
+        Alert.alert('Slot Unavailable', 'This time slot is currently being booked by someone else. Please choose another slot.');
+        setSubmittingBooking(false);
+        // Refresh available slots
+        fetchAvailableSlots(selectedCenter, bookingDate);
+        return;
+      }
+      
+      setIsPaymentStep(true);
+    } catch (err: any) {
+      Alert.alert('Slot Unavailable', err.message || 'This time slot was just booked by someone else.');
+      // Refresh available slots
+      fetchAvailableSlots(selectedCenter, bookingDate);
+    } finally {
+      setSubmittingBooking(false);
+    }
+  };
+
+  const handleConfirmBooking = async () => {
+    if (!selectedCenter) return;
+    
+    try {
+      setProcessingPayment(true);
+      
+      const paymentRes = await api.createMockPayment({
+        amount: 500, // Fixed mock booking fee
+        currency: 'INR',
+      });
+
+      if (!paymentRes || !paymentRes.success) {
+         Alert.alert('Payment Failed', 'Payment initialization failed. Cannot proceed with booking.');
+         setProcessingPayment(false);
+         return;
+      }
+
+      if (paymentRes.isFallback) {
+        // Fallback for dev mode when Razorpay keys are invalid
+        await processBookingAfterPayment(paymentRes.paymentId);
+        return;
+      }
+
+      const isLoaded = await loadRazorpayScript();
+      if (!isLoaded) {
+        Alert.alert('Error', 'Razorpay SDK failed to load. Are you online?');
+        setProcessingPayment(false);
+        return;
+      }
+
+      const options: any = {
+        key: paymentRes.key,
+        amount: paymentRes.amount,
+        currency: paymentRes.currency,
+        name: 'AutoDoc',
+        description: `Booking Advance for ${bookingServiceType}`,
+        handler: async function (response: any) {
+          // Success
+          await processBookingAfterPayment(paymentRes.paymentId);
+        },
+        prefill: {
+          name: 'AutoDoc User',
+          email: 'user@autodoc.com',
+          contact: '9999999999'
+        },
+        theme: {
+          color: THEME.primary
+        }
+      };
+      
+      if (paymentRes.orderId) {
+        options.order_id = paymentRes.orderId;
+      }
+
+      const rzp1 = new (window as any).Razorpay(options);
+      rzp1.on('payment.failed', function (response: any) {
+        console.log('Payment Failed:', response.error);
+        Alert.alert('Payment Failed', response.error.description || 'Payment was cancelled or failed.');
+        setProcessingPayment(false);
+      });
+      
+      rzp1.open();
+    } catch (err: any) {
+      Alert.alert('Payment Error', 'Failed to initialize payment.');
+      setProcessingPayment(false);
     }
   };
 
@@ -197,7 +375,10 @@ export default function OwnerServiceCentersScreen({ onBack }: { onBack: () => vo
     const services = Array.isArray(c.servicesOffered) ? c.servicesOffered : [];
     const matchesService =
       selectedServiceFilter === 'All' ||
-      services.some((s: string) => s.toLowerCase().includes(selectedServiceFilter.toLowerCase()));
+      services.some((s: any) => {
+        const sName = typeof s === 'string' ? s : (s?.name || s?.category || '');
+        return sName.toLowerCase().includes(selectedServiceFilter.toLowerCase());
+      });
 
     return matchesSearch && matchesService;
   });
@@ -269,20 +450,22 @@ export default function OwnerServiceCentersScreen({ onBack }: { onBack: () => vo
             </Text>
           </View>
         ) : (
-          filteredCenters.map(center => {
-            const workshopName = center.service_center_name || center.businessName || 'AutoDoc Partner Workshop';
-            const addressText = center.service_center_address || center.businessAddress || 'Street Address';
-            const cityText = center.city || 'Kerala';
+          filteredCenters.map((center, index) => {
+            const workshopName = center.service_center_name || center.businessName || center.name || 'AutoDoc Partner Workshop';
+            const addressText = center.service_center_address || center.businessAddress || center.location?.address || 'Street Address';
+            const cityText = center.city || center.location?.city || 'Kerala';
             const pincodeText = center.pincode ? `, ${center.pincode}` : '';
-            const phoneText = center.service_center_phone_number || center.phone || center.manager?.phone;
+            const phoneText = center.service_center_phone_number || center.phone || center.manager?.phone || center.contact?.phone;
             const contactPerson = center.contactPersonName || center.contactPerson || center.manager?.name || 'Workshop Manager';
             const operatingHours = center.operatingHours || '9:00 AM - 6:00 PM';
             const services = Array.isArray(center.servicesOffered) && center.servicesOffered.length > 0
               ? center.servicesOffered
               : ['General Maintenance', 'Engine Diagnostics', 'Brake Service'];
 
+            const centerKey = String(center.id || center._id || center.serviceCenterId || `center-${index}`);
+
             return (
-              <View key={center._id} style={styles.centerCard}>
+              <View key={centerKey} style={styles.centerCard}>
                 
                 {/* Workshop Header Row */}
                 <View style={styles.centerCardHeader}>
@@ -331,12 +514,16 @@ export default function OwnerServiceCentersScreen({ onBack }: { onBack: () => vo
                 {/* Offered Services Chips */}
                 <Text style={styles.servicesHeaderTitle}>AVAILABLE SERVICES</Text>
                 <View style={styles.chipsWrap}>
-                  {services.map((svc: string, index: number) => (
-                    <View key={index} style={styles.serviceChip}>
-                      <Ionicons name="checkmark-circle-outline" size={13} color={THEME.primary} />
-                      <Text style={styles.serviceChipText}>{svc}</Text>
-                    </View>
-                  ))}
+                  {services.map((svc: any, index: number) => {
+                    const svcName = typeof svc === 'string' ? svc : (svc?.name || 'Service');
+                    const keyStr = typeof svc === 'string' ? svc : (svc?.id || svc?.name || index);
+                    return (
+                      <View key={`svc-${index}-${keyStr}`} style={styles.serviceChip}>
+                        <Ionicons name="checkmark-circle-outline" size={13} color={THEME.primary} />
+                        <Text style={styles.serviceChipText}>{svcName}</Text>
+                      </View>
+                    );
+                  })}
                 </View>
 
                 {/* Card Actions Footer */}
@@ -348,7 +535,18 @@ export default function OwnerServiceCentersScreen({ onBack }: { onBack: () => vo
                       activeOpacity={0.8}
                     >
                       <Ionicons name="call-outline" size={15} color={THEME.primary} />
-                      <Text style={styles.callBtnText}>Call Workshop</Text>
+                      <Text style={styles.callBtnText}>Call</Text>
+                    </TouchableOpacity>
+                  ) : null}
+
+                  {onViewParts ? (
+                    <TouchableOpacity
+                      style={styles.callBtn}
+                      onPress={() => onViewParts(center.serviceCenterId || center.id || center._id)}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="cube-outline" size={15} color={THEME.primary} />
+                      <Text style={styles.callBtnText}>Parts</Text>
                     </TouchableOpacity>
                   ) : null}
 
@@ -358,7 +556,7 @@ export default function OwnerServiceCentersScreen({ onBack }: { onBack: () => vo
                     activeOpacity={0.85}
                   >
                     <Ionicons name="calendar" size={16} color="#FFFFFF" />
-                    <Text style={styles.bookServiceBtnText}>Book Service Request</Text>
+                    <Text style={styles.bookServiceBtnText}>Book Service</Text>
                   </TouchableOpacity>
                 </View>
 
@@ -377,9 +575,9 @@ export default function OwnerServiceCentersScreen({ onBack }: { onBack: () => vo
             {/* Modal Header */}
             <View style={styles.modalHeader}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.modalTitle}>Request Service Booking</Text>
+                <Text style={styles.modalTitle}>{isPaymentStep ? 'Payment Details' : 'Request Service Booking'}</Text>
                 <Text style={styles.modalSubTitle} numberOfLines={1}>
-                  {selectedCenter?.service_center_name || selectedCenter?.businessName || 'Partner Workshop'}
+                  {selectedCenter?.service_center_name || selectedCenter?.businessName || selectedCenter?.name || 'Partner Workshop'}
                 </Text>
               </View>
               <TouchableOpacity onPress={() => setShowBookingModal(false)}>
@@ -392,6 +590,18 @@ export default function OwnerServiceCentersScreen({ onBack }: { onBack: () => vo
                 <Ionicons name="checkmark-circle" size={24} color="#059669" />
                 <Text style={styles.successBannerText}>{bookingSuccessMsg}</Text>
               </View>
+            ) : isPaymentStep ? (
+              <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={true}>
+                <View style={styles.paymentCard}>
+                  <Text style={styles.paymentHeader}>Booking Advance: ₹500</Text>
+                  <Text style={styles.paymentSubtext}>You will be redirected to Razorpay to complete your payment securely.</Text>
+                  
+                  <View style={{ alignItems: 'center', padding: 20 }}>
+                    <Ionicons name="card" size={48} color={THEME.primary} />
+                    <Text style={{ marginTop: 12, fontWeight: '600', color: THEME.text }}>Secure Checkout via Razorpay</Text>
+                  </View>
+                </View>
+              </ScrollView>
             ) : (
               <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={true}>
                 
@@ -400,13 +610,14 @@ export default function OwnerServiceCentersScreen({ onBack }: { onBack: () => vo
                   <Text style={styles.inputLabel}>Select Your Vehicle *</Text>
                   {vehicles.length > 0 ? (
                     <View style={styles.vehiclePillsRow}>
-                      {vehicles.map((v: any) => {
-                        const isSelected = bookingVehicleId === v._id;
+                      {vehicles.map((v: any, vIndex: number) => {
+                        const vId = String(v._id || v.id || `veh-${vIndex}`);
+                        const isSelected = bookingVehicleId === v._id || bookingVehicleId === v.id;
                         return (
                           <TouchableOpacity
-                            key={v._id}
+                            key={vId}
                             style={[styles.vehiclePill, isSelected && styles.vehiclePillSelected]}
-                            onPress={() => setBookingVehicleId(v._id)}
+                            onPress={() => setBookingVehicleId(v._id || v.id)}
                             activeOpacity={0.8}
                           >
                             <Ionicons name="car" size={14} color={isSelected ? THEME.primary : '#64748B'} />
@@ -435,13 +646,14 @@ export default function OwnerServiceCentersScreen({ onBack }: { onBack: () => vo
                     {(selectedCenter?.servicesOffered && selectedCenter.servicesOffered.length > 0
                       ? selectedCenter.servicesOffered
                       : ['General Maintenance', 'Engine Diagnostics', 'Brake Service', 'Detailing & Wash']
-                    ).map((svc: string) => {
-                      const isSelected = bookingServiceType === svc;
+                    ).map((svc: any, sIndex: number) => {
+                      const svcName = typeof svc === 'string' ? svc : (svc?.name || 'General Maintenance');
+                      const isSelected = bookingServiceType === svcName;
                       return (
                         <TouchableOpacity
-                          key={svc}
+                          key={`svc-opt-${sIndex}-${svcName}`}
                           style={[styles.serviceOptionChip, isSelected && styles.serviceOptionChipSelected]}
-                          onPress={() => setBookingServiceType(svc)}
+                          onPress={() => setBookingServiceType(svcName)}
                           activeOpacity={0.8}
                         >
                           <Ionicons
@@ -450,7 +662,7 @@ export default function OwnerServiceCentersScreen({ onBack }: { onBack: () => vo
                             color={isSelected ? THEME.primary : '#94A3B8'}
                           />
                           <Text style={[styles.serviceOptionText, isSelected && styles.serviceOptionTextSelected]}>
-                            {svc}
+                            {svcName}
                           </Text>
                         </TouchableOpacity>
                       );
@@ -461,33 +673,64 @@ export default function OwnerServiceCentersScreen({ onBack }: { onBack: () => vo
                 {/* 3. Date & Time */}
                 <View style={styles.inputGroup}>
                   <Text style={styles.inputLabel}>Preferred Booking Date</Text>
-                  <View style={{ flexDirection: 'row', gap: 8 }}>
-                    {['Today', 'Tomorrow', 'This Weekend'].map(d => (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 4 }}>
+                    {DATE_OPTIONS.map((d, dIndex) => (
                       <TouchableOpacity
-                        key={d}
-                        style={[styles.datePill, bookingDate === d && styles.datePillActive]}
-                        onPress={() => setBookingDate(d)}
+                        key={`date-${dIndex}-${d.value}`}
+                        style={[styles.datePill, bookingDate === d.value && styles.datePillActive]}
+                        onPress={() => setBookingDate(d.value)}
                       >
-                        <Text style={[styles.datePillText, bookingDate === d && styles.datePillTextActive]}>{d}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Preferred Time Slot</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    {TIME_SLOT_PRESETS.map(slot => (
-                      <TouchableOpacity
-                        key={slot}
-                        style={[styles.slotPill, bookingTimeSlot === slot && styles.slotPillActive]}
-                        onPress={() => setBookingTimeSlot(slot)}
-                      >
-                        <Text style={[styles.slotPillText, bookingTimeSlot === slot && styles.slotPillTextActive]}>{slot}</Text>
+                        <Text style={[styles.datePillText, bookingDate === d.value && styles.datePillTextActive]}>{d.label}</Text>
                       </TouchableOpacity>
                     ))}
                   </ScrollView>
                 </View>
+
+                <View style={styles.inputGroup}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={styles.inputLabel}>Preferred Time Slot</Text>
+                    {loadingSlots && <Text style={{ fontSize: 10, color: THEME.primary, fontWeight: '600' }}>Checking slots...</Text>}
+                  </View>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    {TIME_SLOT_PRESETS.map((slot, tIndex) => {
+                      const isLocked = bookedSlots.includes(slot);
+                      const isSelected = bookingTimeSlot === slot;
+                      return (
+                        <TouchableOpacity
+                          key={`slot-${tIndex}-${slot}`}
+                          style={[
+                            styles.slotPill,
+                            isSelected && styles.slotPillActive,
+                            isLocked && styles.slotPillLocked
+                          ]}
+                          onPress={() => {
+                            if (isLocked) {
+                              Alert.alert('Not Available', 'This slot is already booked or currently being reserved by another user. Please choose another time.');
+                            } else {
+                              setBookingTimeSlot(slot);
+                            }
+                          }}
+                          activeOpacity={0.8}
+                        >
+                          <Ionicons
+                            name={isLocked ? 'lock-closed' : (isSelected ? 'time' : 'time-outline')}
+                            size={12}
+                            color={isLocked ? '#94A3B8' : (isSelected ? '#FFFFFF' : THEME.textSecondary)}
+                            style={{ marginRight: 4 }}
+                          />
+                          <Text style={[
+                            styles.slotPillText,
+                            isSelected && styles.slotPillTextActive,
+                            isLocked && styles.slotPillTextLocked
+                          ]}>
+                            {slot} {isLocked ? '(Booked)' : ''}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+
 
                 {/* 4. Notes */}
                 <View style={styles.inputGroup}>
@@ -507,22 +750,34 @@ export default function OwnerServiceCentersScreen({ onBack }: { onBack: () => vo
 
             {!bookingSuccessMsg && (
               <View style={styles.modalActions}>
-                <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowBookingModal(false)}>
-                  <Text style={styles.cancelBtnText}>Cancel</Text>
+                <TouchableOpacity style={styles.cancelBtn} onPress={() => {
+                  if (isPaymentStep) {
+                    setIsPaymentStep(false);
+                  } else {
+                    setShowBookingModal(false);
+                  }
+                }}>
+                  <Text style={styles.cancelBtnText}>{isPaymentStep ? 'Back' : 'Cancel'}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   style={styles.confirmBookingBtn}
-                  onPress={handleConfirmBooking}
-                  disabled={submittingBooking}
+                  onPress={() => {
+                    if (isPaymentStep) {
+                      handleConfirmBooking();
+                    } else {
+                      handleProceedToPayment();
+                    }
+                  }}
+                  disabled={submittingBooking || processingPayment}
                   activeOpacity={0.85}
                 >
-                  {submittingBooking ? (
+                  {(submittingBooking || processingPayment) ? (
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
                     <>
-                      <Ionicons name="send" size={15} color="#FFFFFF" />
-                      <Text style={styles.confirmBookingBtnText}>Submit Service Request</Text>
+                      <Ionicons name={isPaymentStep ? "shield-checkmark" : "arrow-forward"} size={15} color="#FFFFFF" />
+                      <Text style={styles.confirmBookingBtnText}>{isPaymentStep ? 'Pay & Submit Booking' : 'Proceed to Payment'}</Text>
                     </>
                   )}
                 </TouchableOpacity>
@@ -969,6 +1224,8 @@ const styles = StyleSheet.create({
     fontWeight: '800'
   },
   slotPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
@@ -981,6 +1238,11 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.primary,
     borderColor: THEME.primary
   },
+  slotPillLocked: {
+    backgroundColor: '#F8FAFC',
+    borderColor: '#E2E8F0',
+    opacity: 0.65
+  },
   slotPillText: {
     fontSize: 11,
     color: THEME.textSecondary,
@@ -990,6 +1252,12 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '800'
   },
+  slotPillTextLocked: {
+    color: '#94A3B8',
+    fontWeight: '600',
+    textDecorationLine: 'line-through'
+  },
+
   modalActions: {
     flexDirection: 'row',
     gap: 12,
@@ -1025,5 +1293,24 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     color: '#FFFFFF'
+  },
+  paymentCard: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 16
+  },
+  paymentHeader: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 4
+  },
+  paymentSubtext: {
+    fontSize: 12,
+    color: '#64748B',
+    marginBottom: 16
   }
 });

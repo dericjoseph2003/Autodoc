@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { adminApi } from '../../src/api/adminApi';
+import { BACKEND_HOST } from '../../src/services/api';
 import BackButton from '../../src/components/ui/BackButton';
 
 const THEME = {
@@ -131,8 +132,7 @@ export default function ServiceCenterDetailScreen({ centerId, onBack, onActionSu
   const resolveDocUrl = (url) => {
     if (!url) return '';
     if (url.startsWith('http://') || url.startsWith('https://')) return url;
-    const host = Platform.OS === 'android' ? 'http://10.0.2.2:5000' : 'http://localhost:5000';
-    return `${host}${url.startsWith('/') ? '' : '/'}${url}`;
+    return `${BACKEND_HOST}${url.startsWith('/') ? '' : '/'}${url}`;
   };
 
   const isImageFile = (url) => {

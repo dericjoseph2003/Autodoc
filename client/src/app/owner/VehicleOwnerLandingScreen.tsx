@@ -69,11 +69,7 @@ export default function VehicleOwnerLandingScreen({
 
           {/* Call to Actions */}
           <View style={styles.actionButtonsContainer}>
-            <TouchableOpacity style={styles.primaryBtn} onPress={onContinueAsGuest} activeOpacity={0.85}>
-              <Ionicons name="flash-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
-              <Text style={styles.primaryBtnText}>Explore Dashboard (Guest)</Text>
-            </TouchableOpacity>
-
+    
             <View style={styles.splitBtnRow}>
               <TouchableOpacity style={styles.secondaryBtn} onPress={onLogin} activeOpacity={0.85}>
                 <Ionicons name="log-in-outline" size={18} color="#0046AD" style={{ marginRight: 6 }} />

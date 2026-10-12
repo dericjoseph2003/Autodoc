@@ -16,10 +16,14 @@ import { api, setToken, getToken, subscribeToToken } from '../services/api';
 // Importing Role Dashboard Home Screens
 import OwnerHomeScreen from './owner/OwnerHomeScreen';
 import OwnerServiceCentersScreen from './owner/OwnerServiceCentersScreen';
+import OwnerSparePartsCatalogScreen from './owner/OwnerSparePartsCatalogScreen';
+import OwnerAppointmentsScreen from './owner/OwnerAppointmentsScreen';
+import OwnerRoadsideScreen from './owner/OwnerRoadsideScreen';
 import ServiceCenterHomeScreen from './serviceCenter/ServiceCenterHomeScreen';
 import ServiceCenterAppointmentsScreen from './serviceCenter/ServiceCenterAppointmentsScreen';
 import ServiceCenterInventoryScreen from './serviceCenter/ServiceCenterInventoryScreen';
 import ServiceCenterRoadsideScreen from './serviceCenter/ServiceCenterRoadsideScreen';
+import ServiceCenterServicesScreen from './serviceCenter/ServiceCenterServicesScreen';
 import AdminHomeScreen from './admin/AdminHomeScreen';
 import PendingApprovalScreen from '../../screens/PendingApprovalScreen';
 import ProfileEditScreen from '../../screens/ProfileEditScreen';
@@ -53,8 +57,9 @@ export default function AppIndex() {
 
   // Navigation tabs state per role
   const [activeTab, setActiveTab] = useState<
-    'Home' | 'My Vehicles' | 'Service Centers' | 'Roadside' | 'Profile' | 'ProfileEdit' | 'Appointments' | 'Spare Parts' | 'Roadside Requests' | 'Users' | 'Reports'
+    'Home' | 'My Vehicles' | 'Service Centers' | 'Services' | 'Roadside' | 'Profile' | 'ProfileEdit' | 'Appointments' | 'Spare Parts' | 'Roadside Requests' | 'Users' | 'Reports'
   >('Home');
+  const [selectedServiceCenterForParts, setSelectedServiceCenterForParts] = useState<string>('All');
 
   // Vehicle Form & Documents Data
   const [vehicles, setVehicles] = useState<any[]>([]);
@@ -324,6 +329,8 @@ export default function AppIndex() {
         return isActive ? 'car' : 'car-outline';
       case 'Service Centers':
         return isActive ? 'construct' : 'construct-outline';
+      case 'Services':
+        return isActive ? 'ribbon' : 'ribbon-outline';
       case 'Roadside':
       case 'Roadside Requests':
         return isActive ? 'warning' : 'warning-outline';
@@ -368,10 +375,11 @@ export default function AppIndex() {
   };
 
   const renderOwnerNavigator = () => {
-    const tabs: Array<{ key: 'Home' | 'My Vehicles' | 'Service Centers' | 'Roadside' | 'Profile'; label: string }> = [
+    const tabs: Array<{ key: 'Home' | 'My Vehicles' | 'Service Centers' | 'Spare Parts' | 'Roadside' | 'Profile'; label: string }> = [
       { key: 'Home', label: 'Home' },
       { key: 'My Vehicles', label: 'Vehicles' },
       { key: 'Service Centers', label: 'Workshops' },
+      { key: 'Spare Parts', label: 'Parts' },
       { key: 'Roadside', label: 'Roadside' },
       { key: 'Profile', label: 'Profile' }
     ];
@@ -384,9 +392,10 @@ export default function AppIndex() {
   };
 
   const renderServiceCenterNavigator = () => {
-    const tabs: Array<{ key: 'Home' | 'Appointments' | 'Spare Parts' | 'Roadside Requests' | 'Profile'; label: string }> = [
+    const tabs: Array<{ key: 'Home' | 'Appointments' | 'Services' | 'Spare Parts' | 'Roadside Requests' | 'Profile'; label: string }> = [
       { key: 'Home', label: 'Home' },
       { key: 'Appointments', label: 'Bookings' },
+      { key: 'Services', label: 'Services' },
       { key: 'Spare Parts', label: 'Inventory' },
       { key: 'Roadside Requests', label: 'Requests' },
       { key: 'Profile', label: 'Profile' }
@@ -452,18 +461,30 @@ export default function AppIndex() {
         );
       }
       if (activeTab === 'Service Centers') {
-        return <OwnerServiceCentersScreen onBack={() => setActiveTab('Home')} />;
+        return (
+          <OwnerServiceCentersScreen
+            onBack={() => setActiveTab('Home')}
+            onViewParts={(scId) => {
+              setSelectedServiceCenterForParts(scId);
+              setActiveTab('Spare Parts');
+            }}
+          />
+        );
+      }
+      if (activeTab === 'Spare Parts') {
+        return (
+          <OwnerSparePartsCatalogScreen
+            onBack={() => setActiveTab('Home')}
+            vehicles={vehicles}
+            initialServiceCenterId={selectedServiceCenterForParts}
+          />
+        );
+      }
+      if (activeTab === 'Appointments') {
+        return <OwnerAppointmentsScreen onBack={() => setActiveTab('Home')} />;
       }
       if (activeTab === 'Roadside') {
-        return (
-          <ScrollView contentContainerStyle={styles.paddedContent} showsVerticalScrollIndicator={true}>
-            <BackButton variant="card" label="Back to Home" onPress={() => setActiveTab('Home')} style={{ marginBottom: 12 }} />
-            <Text style={styles.viewHeader}>Roadside Emergency Help</Text>
-            <TouchableOpacity style={styles.roadsideBigBtn} onPress={() => alert('🚨 Emergency roadside rescue dispatched!')}>
-              <Text style={styles.roadsideBigBtnText}>Tap for Roadside Assistance 🚨</Text>
-            </TouchableOpacity>
-          </ScrollView>
-        );
+        return <OwnerRoadsideScreen onBack={() => setActiveTab('Home')} vehicles={vehicles} />;
       }
     }
 
@@ -474,8 +495,11 @@ export default function AppIndex() {
       if (activeTab === 'Appointments') {
         return <ServiceCenterAppointmentsScreen onBack={() => setActiveTab('Home')} />;
       }
+      if (activeTab === 'Services') {
+        return <ServiceCenterServicesScreen user={user} onBack={() => setActiveTab('Home')} />;
+      }
       if (activeTab === 'Spare Parts') {
-        return <ServiceCenterInventoryScreen onBack={() => setActiveTab('Home')} />;
+        return <ServiceCenterInventoryScreen onBack={() => setActiveTab('Home')} user={user} />;
       }
       if (activeTab === 'Roadside Requests') {
         return <ServiceCenterRoadsideScreen onBack={() => setActiveTab('Home')} />;

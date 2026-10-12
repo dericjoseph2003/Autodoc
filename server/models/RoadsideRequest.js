@@ -11,6 +11,11 @@ const roadsideRequestSchema = new mongoose.Schema({
     ref: 'Vehicle',
     required: false
   },
+  service_center_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'ServiceCenter',
+    required: false
+  },
   roadside_request_type: {
     type: String,
     required: [true, 'Roadside request type is required']
@@ -58,6 +63,7 @@ roadsideRequestSchema.virtual('roadside_request_id').get(function() { return thi
 
 roadsideRequestSchema.virtual('user').get(function() { return this.user_id; }).set(function(v) { this.user_id = v; });
 roadsideRequestSchema.virtual('vehicle').get(function() { return this.vehicle_id; }).set(function(v) { this.vehicle_id = v; });
+roadsideRequestSchema.virtual('serviceCenter').get(function() { return this.service_center_id; }).set(function(v) { this.service_center_id = v; });
 roadsideRequestSchema.virtual('type').get(function() { return this.roadside_request_type; }).set(function(v) { this.roadside_request_type = v; });
 roadsideRequestSchema.virtual('latitude').get(function() { return this.roadside_request_latitude; }).set(function(v) { this.roadside_request_latitude = v; });
 roadsideRequestSchema.virtual('longitude').get(function() { return this.roadside_request_longitude; }).set(function(v) { this.roadside_request_longitude = v; });
@@ -70,6 +76,7 @@ roadsideRequestSchema.methods.toJSON = function () {
   obj.roadside_request_id = obj._id;
   obj.user = obj.user_id;
   obj.vehicle = obj.vehicle_id;
+  obj.serviceCenter = obj.service_center_id;
   obj.type = obj.roadside_request_type || obj.type;
   obj.latitude = obj.roadside_request_latitude || obj.latitude;
   obj.longitude = obj.roadside_request_longitude || obj.longitude;

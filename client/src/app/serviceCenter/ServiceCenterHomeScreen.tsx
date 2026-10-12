@@ -39,6 +39,7 @@ export default function ServiceCenterHomeScreen({ user, onNavigateToTab }: Servi
   const [appointments, setAppointments] = useState<any[]>([]);
   const [roadsideRequests, setRoadsideRequests] = useState<any[]>([]);
   const [spareParts, setSpareParts] = useState<any[]>([]);
+  const [servicesOffered, setServicesOffered] = useState<any[]>([]);
   const [businessName, setBusinessName] = useState('Service Center Workshop');
   const [category, setCategory] = useState('Multi-brand Workshop');
   const [city, setCity] = useState('');
@@ -64,6 +65,7 @@ export default function ServiceCenterHomeScreen({ user, onNavigateToTab }: Servi
           setCategory(currentCenter.businessType || currentCenter.workshopCategory || 'Multi-brand Service Center');
           setCity(currentCenter.city || '');
           setApprovalStatus(currentCenter.approvalStatus || 'approved');
+          setServicesOffered(currentCenter.servicesOffered || []);
         } else {
           setBusinessName(user.name || 'Service Center Workshop');
           setApprovalStatus('approved');
@@ -233,6 +235,21 @@ export default function ServiceCenterHomeScreen({ user, onNavigateToTab }: Servi
           <View style={{ flex: 1 }}>
             <Text style={styles.actionCardTitle}>Parts & Stock Catalog</Text>
             <Text style={styles.actionCardSub}>Add items, update stock & set pricing</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.actionCard}
+          onPress={() => onNavigateToTab('Services')}
+          activeOpacity={0.85}
+        >
+          <View style={[styles.actionIconCircle, { backgroundColor: THEME.successLight }]}>
+            <Ionicons name="construct" size={22} color={THEME.success} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.actionCardTitle}>Services Provided Catalog</Text>
+            <Text style={styles.actionCardSub}>List provided services, update pricing & active status</Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
         </TouchableOpacity>

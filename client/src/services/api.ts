@@ -1,7 +1,47 @@
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 
-const BACKEND_HOST = Platform.OS === 'android' ? 'http://10.0.2.2:5000' : 'http://localhost:5000';
+export const getBackendHost = () => {
+  if (Platform.OS === 'web') {
+    if (typeof window !== 'undefined' && window.location && window.location.hostname) {
+      return `http://${window.location.hostname}:5000`;
+    }
+    return 'http://localhost:5000';
+  }
+
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    return process.env.EXPO_PUBLIC_API_URL;
+  }
+  
+  const rawUri = 
+    Constants.expoConfig?.hostUri || 
+    (Constants as any).manifest2?.extra?.expoGo?.debuggerHost ||
+    (Constants as any).manifest?.debuggerHost ||
+    Constants.linkingUri ||
+    (Constants as any).experienceUrl ||
+    '';
+
+  if (rawUri) {
+    const cleanUri = String(rawUri).replace(/^[a-z]+:\/\//i, '');
+    const ip = cleanUri.split(':')[0]?.split('/')[0];
+    if (ip && ip !== 'localhost' && ip !== '127.0.0.1' && !ip.includes('ngrok') && !ip.includes('exp.direct')) {
+      return `http://${ip}:5000`;
+    }
+  }
+
+  if (Platform.OS === 'android') {
+    return 'http://10.0.2.2:5000';
+  }
+
+  // Fallback LAN IP for physical mobile devices connected to PC's local Wi-Fi
+  const DEFAULT_LAN_IP = '172.20.10.3';
+  return `http://${DEFAULT_LAN_IP}:5000`;
+};
+
+export const getApiBaseUrl = () => `${getBackendHost()}/api`;
+export const BACKEND_HOST = getBackendHost();
 export const API_BASE_URL = `${BACKEND_HOST}/api`;
+
 
 const STORAGE_KEY = 'autodoc_token';
 
@@ -63,7 +103,7 @@ async function request(endpoint: string, options: RequestInit = {}) {
   const isPublicAuthEndpoint = endpoint.includes('/login') || endpoint.includes('/register') || endpoint.includes('/forgot') || endpoint.includes('/reset');
 
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await fetch(`${getApiBaseUrl()}${endpoint}`, {
       ...options,
       headers
     });
@@ -106,6 +146,9 @@ export const api = {
   // Service Centers
   registerServiceCenter: (body: any) => request('/service-centers', { method: 'POST', body: JSON.stringify(body) }),
   listServiceCenters: () => request('/service-centers'),
+  getMyServiceCenter: () => request('/service-centers/my-center'),
+  updateServiceCenterServices: (id: string, servicesOffered: any[]) =>
+    request(`/service-centers/${id}/services`, { method: 'PUT', body: JSON.stringify({ servicesOffered }) }),
   approveServiceCenter: (id: string) => request(`/service-centers/${id}/approve`, { method: 'PATCH' }),
   deactivateServiceCenter: (id: string) => request(`/service-centers/${id}/deactivate`, { method: 'PATCH' }),
   getPendingServiceCenters: () => request('/service-centers/pending'),
@@ -140,9 +183,20 @@ export const api = {
   // Create appointment (owner)
   createAppointment: (body: any) => request('/appointments', { method: 'POST', body: JSON.stringify(body) }),
 
+  // Mock Payment
+  createMockPayment: (body: { amount: number; currency?: string; payment_method?: string }) => request('/payments/mock', { method: 'POST', body: JSON.stringify(body) }),
+
   // Update appointment status (service_center / admin)
   updateAppointmentStatus: (id: string, status: string) =>
     request(`/appointments/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+
+  // Get available time slots for a service center on a date
+  getAvailableSlots: (serviceCenterId: string, date?: string) =>
+    request(`/service-centers/${encodeURIComponent(serviceCenterId)}/available-slots${date ? `?date=${encodeURIComponent(date)}` : ''}`),
+
+  // Lock a time slot temporarily
+  lockSlot: (service_center_id: string, date: string, time_slot: string) =>
+    request('/appointments/lock-slot', { method: 'POST', body: JSON.stringify({ service_center_id, date, time_slot }) }),
 
   // --- ROADSIDE REQUESTS (real backend) ---
 
@@ -157,18 +211,69 @@ export const api = {
   updateRoadsideStatus: (id: string, status: string) =>
     request(`/roadside-requests/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
 
-  // --- SPARE PARTS ---
+  // --- PARTS CATALOG & SPARE PARTS ---
 
-  listSpareParts: (params?: { serviceCenter?: string; category?: string }) => {
-    const query = params
-      ? '?' + Object.entries(params).map(([k, v]) => `${k}=${encodeURIComponent(v!)}`).join('&')
-      : '';
-    return request(`/spare-parts${query}`);
+  listParts: (params?: { search?: string; category?: string; vehicle?: string; lowStockOnly?: boolean; page?: number; limit?: number; serviceCenter?: string }) => {
+    if (!params) return request('/parts');
+    const query = '?' + Object.entries(params)
+      .filter(([_, v]) => v !== undefined && v !== null && v !== '')
+      .map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`)
+      .join('&');
+    return request(`/parts${query}`);
   },
 
-  createSparePart: (body: any) => request('/spare-parts', { method: 'POST', body: JSON.stringify(body) }),
-  updateSparePart: (id: string, body: any) => request(`/spare-parts/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
-  deleteSparePart: (id: string) => request(`/spare-parts/${id}`, { method: 'DELETE' }),
+  getLowStockParts: () => request('/parts/low-stock'),
+
+  getPartDetail: (id: string) => request(`/parts/${id}`),
+
+  getPartAvailability: (sku: string, lat?: number, lng?: number, sortBy?: string) => {
+    const query = [
+      lat !== undefined ? `lat=${lat}` : '',
+      lng !== undefined ? `lng=${lng}` : '',
+      sortBy ? `sortBy=${sortBy}` : ''
+    ].filter(Boolean).join('&');
+    return request(`/parts/${encodeURIComponent(sku)}/availability${query ? `?${query}` : ''}`);
+  },
+
+  getNearbyServiceCenters: (lat: number, lng: number, radiusKm?: number) => {
+    return request(`/service-centers/nearby?lat=${lat}&lng=${lng}&radiusKm=${radiusKm || 50}`);
+  },
+
+  comparePartPrices: (sku: string) => request(`/parts/compare/${encodeURIComponent(sku)}`),
+
+  subscribeStockAlert: (partId: string, emailOrPhone?: string) =>
+    request(`/parts/${partId}/stock-alert`, { method: 'POST', body: JSON.stringify({ emailOrPhone }) }),
+
+  createPart: (body: any) => request('/parts', { method: 'POST', body: JSON.stringify(body) }),
+
+  updatePart: (id: string, body: any) => request(`/parts/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+
+  adjustPartStock: (id: string, delta: number) => request(`/parts/${id}/stock`, { method: 'PATCH', body: JSON.stringify({ delta }) }),
+
+  deletePart: (id: string) => request(`/parts/${id}`, { method: 'DELETE' }),
+
+  listSpareParts: (params?: { serviceCenter?: string; category?: string; search?: string; vehicle?: string }) => {
+    const query = params
+      ? '?' + Object.entries(params).filter(([_, v]) => v).map(([k, v]) => `${k}=${encodeURIComponent(v!)}`).join('&')
+      : '';
+    return request(`/parts${query}`).catch(() => request(`/spare-parts${query}`));
+  },
+
+  listInventory: (params?: { serviceCenterId?: string; lowStockOnly?: boolean }) => {
+    const query = params
+      ? '?' + Object.entries(params).filter(([_, v]) => v !== undefined && v !== null).map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`).join('&')
+      : '';
+    return request(`/inventory${query}`);
+  },
+
+  createInventory: (body: any) => request('/inventory', { method: 'POST', body: JSON.stringify(body) }),
+  updateInventory: (id: string, body: any) => request(`/inventory/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+  adjustInventoryStock: (id: string, delta: number) => request(`/inventory/${id}/stock`, { method: 'PATCH', body: JSON.stringify({ delta }) }),
+  deleteInventoryItem: (id: string) => request(`/inventory/${id}`, { method: 'DELETE' }),
+
+  createSparePart: (body: any) => request('/parts', { method: 'POST', body: JSON.stringify(body) }),
+  updateSparePart: (id: string, body: any) => request(`/parts/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+  deleteSparePart: (id: string) => request(`/parts/${id}`, { method: 'DELETE' }),
 
   // --- ADMIN: List All Users (real backend) ---
   listAllUsers: () => request('/admin/users'),

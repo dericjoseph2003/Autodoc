@@ -8,14 +8,17 @@ require('dotenv').config();
 const usersRoutes = require('./routes/users');
 const vehiclesRoutes = require('./routes/vehicles');
 const serviceCentersRoutes = require('./routes/serviceCenters');
+const inventoryRoutes = require('./routes/inventory');
 const notificationsRoutes = require('./routes/notifications');
 const documentsRoutes = require('./routes/documents');
 const appointmentsRoutes = require('./routes/appointments');
 const roadsideRequestsRoutes = require('./routes/roadsideRequests');
 const sparePartsRoutes = require('./routes/spareParts');
+const partsRoutes = require('./routes/parts');
 const adminRoutes = require('./routes/admin');
 const serviceHistoryRoutes = require('./routes/serviceHistory');
 const damageReportsRoutes = require('./routes/damageReports');
+const paymentsRoutes = require('./routes/payments');
 
 // Middleware Imports
 const errorHandler = require('./middleware/errorHandler');
@@ -39,14 +42,17 @@ app.get('/', (req, res) => {
 app.use('/api/users', usersRoutes);
 app.use('/api/vehicles', vehiclesRoutes);
 app.use('/api/service-centers', serviceCentersRoutes);
+app.use('/api/inventory', inventoryRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/documents', documentsRoutes);
 app.use('/api/appointments', appointmentsRoutes);
 app.use('/api/roadside-requests', roadsideRequestsRoutes);
 app.use('/api/spare-parts', sparePartsRoutes);
+app.use('/api/parts', partsRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/service-history', serviceHistoryRoutes);
 app.use('/api/damage-reports', damageReportsRoutes);
+app.use('/api/payments', paymentsRoutes);
 
 // Global Error Handler
 app.use(errorHandler);
@@ -67,6 +73,7 @@ mongoose
   });
 
 // Start Server
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server is running on port ${PORT} (bound to 0.0.0.0)`);
 });
+

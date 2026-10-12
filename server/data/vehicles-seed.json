@@ -1,0 +1,30 @@
+[
+  { "vehicleId": "car-maruti-swift", "type": "Car", "brand": "Maruti Suzuki", "model": "Swift", "yearFrom": 2018, "yearTo": 2026, "fuelType": "Petrol" },
+  { "vehicleId": "car-maruti-baleno", "type": "Car", "brand": "Maruti Suzuki", "model": "Baleno", "yearFrom": 2019, "yearTo": 2026, "fuelType": "Petrol" },
+  { "vehicleId": "car-hyundai-i10", "type": "Car", "brand": "Hyundai", "model": "Grand i10 Nios", "yearFrom": 2019, "yearTo": 2026, "fuelType": "Petrol" },
+  { "vehicleId": "car-hyundai-i20", "type": "Car", "brand": "Hyundai", "model": "i20", "yearFrom": 2020, "yearTo": 2026, "fuelType": "Petrol" },
+  { "vehicleId": "car-honda-city", "type": "Car", "brand": "Honda", "model": "City", "yearFrom": 2020, "yearTo": 2026, "fuelType": "Petrol" },
+  { "vehicleId": "car-tata-tiago", "type": "Car", "brand": "Tata", "model": "Tiago", "yearFrom": 2019, "yearTo": 2026, "fuelType": "Petrol" },
+  { "vehicleId": "car-skoda-rapid", "type": "Car", "brand": "Skoda", "model": "Rapid", "yearFrom": 2017, "yearTo": 2022, "fuelType": "Petrol" },
+
+  { "vehicleId": "bike-hero-splendor", "type": "Bike", "brand": "Hero", "model": "Splendor Plus", "yearFrom": 2015, "yearTo": 2026, "fuelType": "Petrol" },
+  { "vehicleId": "bike-honda-activa", "type": "Bike", "brand": "Honda", "model": "Activa 6G", "yearFrom": 2020, "yearTo": 2026, "fuelType": "Petrol" },
+  { "vehicleId": "bike-bajaj-pulsar", "type": "Bike", "brand": "Bajaj", "model": "Pulsar 150", "yearFrom": 2018, "yearTo": 2026, "fuelType": "Petrol" },
+  { "vehicleId": "bike-tvs-jupiter", "type": "Bike", "brand": "TVS", "model": "Jupiter", "yearFrom": 2019, "yearTo": 2026, "fuelType": "Petrol" },
+  { "vehicleId": "bike-royal-enfield-classic", "type": "Bike", "brand": "Royal Enfield", "model": "Classic 350", "yearFrom": 2021, "yearTo": 2026, "fuelType": "Petrol" },
+
+  { "vehicleId": "suv-tata-nexon", "type": "SUV", "brand": "Tata", "model": "Nexon", "yearFrom": 2020, "yearTo": 2026, "fuelType": "Petrol" },
+  { "vehicleId": "suv-hyundai-creta", "type": "SUV", "brand": "Hyundai", "model": "Creta", "yearFrom": 2020, "yearTo": 2026, "fuelType": "Diesel" },
+  { "vehicleId": "suv-mahindra-scorpio", "type": "SUV", "brand": "Mahindra", "model": "Scorpio-N", "yearFrom": 2022, "yearTo": 2026, "fuelType": "Diesel" },
+  { "vehicleId": "suv-maruti-brezza", "type": "SUV", "brand": "Maruti Suzuki", "model": "Brezza", "yearFrom": 2022, "yearTo": 2026, "fuelType": "Petrol" },
+  { "vehicleId": "suv-kia-seltos", "type": "SUV", "brand": "Kia", "model": "Seltos", "yearFrom": 2019, "yearTo": 2026, "fuelType": "Petrol" },
+
+  { "vehicleId": "truck-tata-407", "type": "Truck", "brand": "Tata", "model": "407 Gold", "yearFrom": 2016, "yearTo": 2026, "fuelType": "Diesel" },
+  { "vehicleId": "truck-ashok-leyland-dost", "type": "Truck", "brand": "Ashok Leyland", "model": "Dost+", "yearFrom": 2018, "yearTo": 2026, "fuelType": "Diesel" },
+  { "vehicleId": "truck-mahindra-bolero-pickup", "type": "Truck", "brand": "Mahindra", "model": "Bolero Pik-up", "yearFrom": 2017, "yearTo": 2026, "fuelType": "Diesel" },
+  { "vehicleId": "truck-eicher-pro", "type": "Truck", "brand": "Eicher", "model": "Pro 2049", "yearFrom": 2019, "yearTo": 2026, "fuelType": "Diesel" },
+
+  { "vehicleId": "other-auto-rickshaw", "type": "Other", "brand": "Bajaj", "model": "RE Compact (Auto)", "yearFrom": 2016, "yearTo": 2026, "fuelType": "CNG" },
+  { "vehicleId": "other-e-rickshaw", "type": "Other", "brand": "Mahindra", "model": "Treo (E-Rickshaw)", "yearFrom": 2021, "yearTo": 2026, "fuelType": "Electric" },
+  { "vehicleId": "other-tractor", "type": "Other", "brand": "Mahindra", "model": "575 DI Tractor", "yearFrom": 2015, "yearTo": 2026, "fuelType": "Diesel" }
+]

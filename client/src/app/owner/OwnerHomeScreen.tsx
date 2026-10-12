@@ -234,7 +234,7 @@ export default function OwnerHomeScreen({ user, onNavigateToTab }: OwnerHomeScre
                 label="Spare Parts"
                 iconColor="#185FA5"
                 iconBg="#185FA512"
-                onPress={() => Alert.alert('Spare Parts', 'Navigating to Spare Parts catalog...')}
+                onPress={() => onNavigateToTab('Spare Parts')}
               />
               <QuickActionTile
                 icon="calendar"

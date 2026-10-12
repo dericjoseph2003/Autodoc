@@ -32,6 +32,7 @@ const createRoadsideRequest = async (req, res, next) => {
     const request = await RoadsideRequest.create({
       user_id: currentUserId,
       vehicle_id: inputVehicleId,
+      service_center_id: req.body.service_center_id || null,
       roadside_request_type: inputType,
       roadside_request_latitude: roadside_request_latitude !== undefined ? roadside_request_latitude : (latitude || 0),
       roadside_request_longitude: roadside_request_longitude !== undefined ? roadside_request_longitude : (longitude || 0),
@@ -59,13 +60,21 @@ const listRoadsideRequests = async (req, res, next) => {
     let query = {};
     const currentUserId = req.user._id || req.user.user_id || req.user.id;
 
-    if (req.user.user_role === 'owner') {
+    if (req.user.user_role === 'owner' || req.user.role === 'owner') {
       query.user_id = currentUserId;
+    } else if (req.user.user_role === 'service_center' || req.user.role === 'service_center') {
+      // Service center sees requests assigned to them OR unassigned pending ones
+      query.$or = [
+        { service_center_id: currentUserId },
+        { service_center_id: { $exists: false } },
+        { service_center_id: null }
+      ];
     }
 
     const requests = await RoadsideRequest.find(query)
-      .populate('user_id', 'user_full_name user_phone_number user_email')
-      .populate('vehicle_id', 'vehicle_make vehicle_model vehicle_registration_number')
+      .populate('user_id', 'user_full_name user_phone_number user_email name phone email')
+      .populate('vehicle_id', 'vehicle_make vehicle_model vehicle_registration_number make model registration_number')
+      .populate('service_center_id', 'service_center_name name service_center_phone_number phone location')
       .sort({ roadside_request_created_at: -1 });
 
     res.status(200).json({ success: true, requests });

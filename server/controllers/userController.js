@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
+const { sendPasswordResetEmail } = require('../utils/emailService');
 
 const googleOAuthClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID || '1050681123836-7ngn8pohp4rjh15f60f8bj3c974eessn.apps.googleusercontent.com');
 
@@ -60,7 +61,7 @@ const register = async (req, res, next) => {
         'pincode',
         'servicesOffered'
       ];
-      
+
       const missingFields = requiredFields.filter(field => {
         const val = req.body[field];
         if (field === 'servicesOffered') {
@@ -82,7 +83,7 @@ const register = async (req, res, next) => {
     if (userExists) {
       return res.status(400).json({
         success: false,
-        message: 'Unable to register with these details'
+        message: 'An account with this email address already exists. Please log in or use a different email address.'
       });
     }
 
@@ -106,8 +107,8 @@ const register = async (req, res, next) => {
         const parsedServices = Array.isArray(req.body.servicesOffered)
           ? req.body.servicesOffered
           : (typeof req.body.servicesOffered === 'string'
-              ? req.body.servicesOffered.split(',').map(s => s.trim()).filter(Boolean)
-              : [req.body.servicesOffered]);
+            ? req.body.servicesOffered.split(',').map(s => s.trim()).filter(Boolean)
+            : [req.body.servicesOffered]);
 
         await ServiceCenter.create({
           user_id: user._id,
@@ -168,7 +169,7 @@ const login = async (req, res, next) => {
   try {
     const emailInput = req.body.user_email || req.body.email;
     const passwordInput = req.body.user_password_hash || req.body.password;
-    
+
     if (!emailInput || !passwordInput) {
       return res.status(400).json({
         success: false,
@@ -218,14 +219,31 @@ const login = async (req, res, next) => {
 
     if (user.user_role === 'service_center') {
       const ServiceCenter = require('../models/ServiceCenter');
-      const serviceCenter = await ServiceCenter.findOne({ user_id: user._id });
-      
-      if (!serviceCenter || (serviceCenter.approvalStatus !== 'approved' && serviceCenter.service_center_is_verified !== true)) {
+      const serviceCenter = await ServiceCenter.findOne({
+        $or: [
+          { user_id: user._id },
+          { 'contact.email': cleanEmail },
+          { email: cleanEmail }
+        ]
+      });
+
+      const isApproved = serviceCenter && (
+        serviceCenter.approvalStatus === 'approved' ||
+        serviceCenter.status === 'approved' ||
+        serviceCenter.service_center_is_verified === true
+      );
+
+      if (!serviceCenter || !isApproved) {
         return res.status(403).json({
           success: false,
           error: 'pending_approval',
           message: 'Your service center account is awaiting admin approval.'
         });
+      }
+
+      if (serviceCenter && !serviceCenter.user_id) {
+        serviceCenter.user_id = user._id;
+        await serviceCenter.save();
       }
     }
 
@@ -346,7 +364,8 @@ const forgotPassword = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Email is required' });
     }
 
-    const user = await User.findOne({ user_email: emailInput.toLowerCase().trim() });
+    const targetEmail = emailInput.toLowerCase().trim();
+    const user = await User.findOne({ user_email: targetEmail });
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -359,17 +378,62 @@ const forgotPassword = async (req, res, next) => {
     user.resetPasswordOtpExpire = new Date(Date.now() + 10 * 60 * 1000);
     await user.save();
 
-    console.log(`[FORGOT PASSWORD] Generated OTP for ${emailInput}: ${otp}`);
+    console.log(`[FORGOT PASSWORD] Generated OTP for ${targetEmail}: ${otp}`);
+
+    // Send real email via emailService
+    await sendPasswordResetEmail(targetEmail, user.user_full_name, otp);
 
     res.status(200).json({
       success: true,
-      message: 'A 6-digit reset code has been sent to your email.',
+      message: `A 6-digit verification code has been sent to ${targetEmail}.`,
       devOtp: otp
+    });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to process forgot password request. Please try again.'
+    });
+  }
+};
+
+/**
+ * Verify OTP Code
+ * POST /api/users/verify-otp
+ */
+const verifyOtp = async (req, res, next) => {
+  try {
+    const emailInput = req.body.user_email || req.body.email;
+    const { otp } = req.body;
+
+    const user = await User.findOne({ user_email: (emailInput || '').toLowerCase().trim() });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'No account found with this email address'
+      });
+    }
+
+    if (
+      !user.resetPasswordOtp ||
+      user.resetPasswordOtp !== (otp || '').trim() ||
+      !user.resetPasswordOtpExpire ||
+      user.resetPasswordOtpExpire.getTime() < Date.now()
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired verification code. Please check your email and try again.'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'OTP verified successfully! You can now enter your new password.'
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Failed to process forgot password request. Please try again.'
+      message: 'Failed to verify verification code.'
     });
   }
 };
@@ -510,5 +574,6 @@ module.exports = {
   getProfile,
   updateProfile,
   forgotPassword,
+  verifyOtp,
   resetPassword
 };

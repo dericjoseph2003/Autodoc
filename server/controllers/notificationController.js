@@ -19,6 +19,11 @@ const sendPushNotificationPlaceholder = async (userId, title, message) => {
  */
 const createNotificationInternal = async (userId, title, message, type = 'info') => {
   try {
+    if (!userId) {
+      console.warn(`[createNotificationInternal] Skipping notification "${title}" - no valid userId provided.`);
+      return null;
+    }
+
     const notification = await Notification.create({
       user_id: userId,
       title,
@@ -32,8 +37,8 @@ const createNotificationInternal = async (userId, title, message, type = 'info')
 
     return notification;
   } catch (error) {
-    console.error('Failed to create internal notification:', error);
-    throw error;
+    console.error('Failed to create internal notification:', error.message);
+    return null;
   }
 };
 
