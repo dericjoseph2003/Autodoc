@@ -1,41 +1,42 @@
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
+const LIVE_BACKEND_URL = 'https://autodoc-41i8.onrender.com';
+
 export const getBackendHost = () => {
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    return process.env.EXPO_PUBLIC_API_URL.replace(/\/+$/, '');
+  }
+
   if (Platform.OS === 'web') {
-    if (typeof window !== 'undefined' && window.location && window.location.hostname) {
-      return `http://${window.location.hostname}:5000`;
+    if (typeof window !== 'undefined' && window.location) {
+      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        return 'http://localhost:5000';
+      }
+      return `${window.location.protocol}//${window.location.hostname}:5000`;
     }
     return 'http://localhost:5000';
   }
 
-  if (process.env.EXPO_PUBLIC_API_URL) {
-    return process.env.EXPO_PUBLIC_API_URL;
-  }
-  
-  const rawUri = 
-    Constants.expoConfig?.hostUri || 
-    (Constants as any).manifest2?.extra?.expoGo?.debuggerHost ||
-    (Constants as any).manifest?.debuggerHost ||
-    Constants.linkingUri ||
-    (Constants as any).experienceUrl ||
-    '';
+  // If running in development with an active Expo packager
+  if (typeof __DEV__ !== 'undefined' && __DEV__) {
+    const rawUri = 
+      Constants.expoConfig?.hostUri || 
+      (Constants as any).manifest2?.extra?.expoGo?.debuggerHost ||
+      (Constants as any).manifest?.debuggerHost ||
+      '';
 
-  if (rawUri) {
-    const cleanUri = String(rawUri).replace(/^[a-z]+:\/\//i, '');
-    const ip = cleanUri.split(':')[0]?.split('/')[0];
-    if (ip && ip !== 'localhost' && ip !== '127.0.0.1' && !ip.includes('ngrok') && !ip.includes('exp.direct')) {
-      return `http://${ip}:5000`;
+    if (rawUri) {
+      const cleanUri = String(rawUri).replace(/^[a-z]+:\/\//i, '');
+      const ip = cleanUri.split(':')[0]?.split('/')[0];
+      if (ip && ip !== 'localhost' && ip !== '127.0.0.1' && !ip.includes('ngrok') && !ip.includes('exp.direct')) {
+        return `http://${ip}:5000`;
+      }
     }
   }
 
-  if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:5000';
-  }
-
-  // Fallback LAN IP for physical mobile devices connected to PC's local Wi-Fi
-  const DEFAULT_LAN_IP = '172.20.10.3';
-  return `http://${DEFAULT_LAN_IP}:5000`;
+  // Default for standalone Android and iOS builds
+  return LIVE_BACKEND_URL;
 };
 
 export const getApiBaseUrl = () => `${getBackendHost()}/api`;

@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "client",
+    "name": "AutoDoc",
     "slug": "client",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -8,10 +8,12 @@
     "scheme": "client",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "bundleIdentifier": "com.autodoc.app",
+      "supportsTablet": true
     },
     "android": {
       "package": "com.autodoc.app",
+      "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -39,6 +41,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "1ec6fa98-9a14-4300-801c-d88f7e17817b"
+      }
     }
   }
 }
